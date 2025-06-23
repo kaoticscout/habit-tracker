@@ -205,6 +205,11 @@ const CategoryGrid = styled.div`
 `
 
 const CategoryButton = styled.button<{ selected: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing[2]};
   padding: ${theme.spacing[3]} ${theme.spacing[4]};
   border: 1px solid ${props => props.selected ? theme.colors.primary[300] : theme.colors.gray[200]};
   background-color: ${props => props.selected ? theme.colors.primary[50] : 'transparent'};
@@ -214,18 +219,29 @@ const CategoryButton = styled.button<{ selected: boolean }>`
   font-weight: ${theme.typography.fontWeight.normal};
   cursor: pointer;
   transition: all ${theme.transitions.normal};
-  min-height: 48px;
+  min-height: 72px;
+  text-align: center;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing[2]} ${theme.spacing[3]};
     font-size: ${theme.typography.fontSize.xs};
-    min-height: 44px;
+    min-height: 64px;
+    gap: ${theme.spacing[1]};
   }
   
   &:hover {
     border-color: ${theme.colors.primary[400]};
     background-color: ${theme.colors.primary[25]};
     color: ${theme.colors.primary[600]};
+  }
+  
+  svg {
+    opacity: ${props => props.selected ? 1 : 0.5};
+    transition: opacity ${theme.transitions.normal};
+  }
+  
+  &:hover svg {
+    opacity: 1;
   }
 `
 
@@ -571,7 +587,7 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
                     handleCategorySelect(category.id)
                   }}
                 >
-                  <Icon size={24} style={{ marginBottom: 4, opacity: selectedCategory === category.id ? 1 : 0.5 }} />
+                  <Icon size={24} />
                   {category.name}
                 </CategoryButton>
               )

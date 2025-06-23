@@ -11,12 +11,12 @@ import { Plus, Sparkles } from 'lucide-react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SignInModal from '@/components/SignInModal'
 import SignUpModal from '@/components/SignUpModal'
+import { useHabits } from '@/hooks/useHabits'
 
 const Container = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, ${theme.colors.primary[25]} 0%, ${theme.colors.background} 100%);
   padding: ${theme.spacing[8]} ${theme.spacing[4]};
-  position: relative;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing[6]} ${theme.spacing[3]};
@@ -25,28 +25,12 @@ const Container = styled.div`
   @media (min-width: ${theme.breakpoints.lg}) {
     padding: ${theme.spacing[12]} ${theme.spacing[4]};
   }
-  
-  /* Zen-like background texture - more subtle */
-  &::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: 
-      radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.002) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(0, 0, 0, 0.002) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: -1;
-  }
 `
 
 const Content = styled.div`
   max-width: 700px;
   margin: 0 auto;
   text-align: center;
-  animation: zenFadeIn 1.5s ease-out;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     max-width: 100%;
@@ -93,7 +77,6 @@ const EmptyState = styled.div`
   margin-bottom: ${theme.spacing[8]};
   border: 1px solid ${theme.colors.gray[100]};
   box-shadow: ${theme.shadows.xs};
-  transition: all ${theme.transitions.normal};
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing[8]};
@@ -104,10 +87,6 @@ const EmptyState = styled.div`
   @media (min-width: ${theme.breakpoints.lg}) {
     padding: ${theme.spacing[16]};
     margin-bottom: ${theme.spacing[12]};
-  }
-  
-  &:hover {
-    box-shadow: ${theme.shadows.sm};
   }
 `
 
@@ -122,7 +101,6 @@ const EmptyIcon = styled.div`
   margin: 0 auto ${theme.spacing[6]};
   color: ${theme.colors.primary[600]};
   opacity: 0.7;
-  transition: all ${theme.transitions.normal};
   
   @media (max-width: ${theme.breakpoints.sm}) {
     width: 64px;
@@ -132,11 +110,6 @@ const EmptyIcon = styled.div`
   
   @media (min-width: ${theme.breakpoints.lg}) {
     margin-bottom: ${theme.spacing[8]};
-  }
-  
-  &:hover {
-    opacity: 1;
-    transform: scale(1.05);
   }
 `
 
@@ -172,7 +145,7 @@ const EmptyDescription = styled.p`
   }
 `
 
-const SignInPrompt = styled.div`
+const AccountPrompt = styled.div`
   color: ${theme.colors.text.secondary};
   font-size: ${theme.typography.fontSize.sm};
   margin-top: ${theme.spacing[6]};
@@ -181,7 +154,6 @@ const SignInPrompt = styled.div`
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.gray[100]};
   text-align: center;
-  transition: all ${theme.transitions.normal};
   
   @media (max-width: ${theme.breakpoints.sm}) {
     margin-top: ${theme.spacing[4]};
@@ -194,13 +166,9 @@ const SignInPrompt = styled.div`
     padding: ${theme.spacing[6]};
     border-radius: ${theme.borderRadius.xl};
   }
-  
-  &:hover {
-    background-color: ${theme.colors.gray[25]};
-  }
 `
 
-const SignInText = styled.div`
+const AccountText = styled.div`
   margin-bottom: ${theme.spacing[2]};
   font-weight: ${theme.typography.fontWeight.normal};
   
@@ -213,7 +181,7 @@ const SignInText = styled.div`
   }
 `
 
-const SignInLink = styled.button`
+const AccountLink = styled.button`
   background: none;
   border: none;
   color: ${theme.colors.primary[600]};
@@ -404,25 +372,83 @@ const CalendarDescription = styled.p`
   }
 `
 
-// Sample habits with different streak values
+// Sample habits with different streak values and rich completion history
 const sampleHabits = [
   {
     id: 1,
-    title: 'Exercise for 30 minutes',
-    category: 'fitness',
+    title: 'Morning meditation',
+    category: 'wellness',
     frequency: 'daily',
     completed: true,
     streak: 7,
-    lastCompleted: new Date().getTime()
+    lastCompleted: new Date().getTime(),
+    // Rich completion history - completed most days this month
+    completionHistory: [
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).getTime(), // Yesterday
+      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).getTime(), // 2 days ago
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).getTime(), // 3 days ago
+      new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).getTime(), // 4 days ago
+      new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).getTime(), // 5 days ago
+      new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).getTime(), // 6 days ago
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).getTime(), // 8 days ago
+      new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).getTime(), // 9 days ago
+      new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).getTime(), // 10 days ago
+      new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).getTime(), // 12 days ago
+      new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).getTime(), // 13 days ago
+      new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).getTime(), // 14 days ago
+      new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).getTime(), // 15 days ago
+      new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).getTime(), // 16 days ago
+      new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).getTime(), // 17 days ago
+      new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).getTime(), // 18 days ago
+      new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).getTime(), // 19 days ago
+      new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).getTime(), // 20 days ago
+      new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).getTime(), // 21 days ago
+      new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).getTime(), // 22 days ago
+      new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).getTime(), // 23 days ago
+      new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).getTime(), // 24 days ago
+      new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).getTime(), // 25 days ago
+      new Date(Date.now() - 26 * 24 * 60 * 60 * 1000).getTime(), // 26 days ago
+      new Date(Date.now() - 27 * 24 * 60 * 60 * 1000).getTime(), // 27 days ago
+      new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).getTime(), // 28 days ago
+      new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).getTime(), // 29 days ago
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime(), // 30 days ago
+    ]
   },
   {
     id: 2,
     title: 'Read for 30 minutes',
-    category: 'productivity',
+    category: 'learning',
     frequency: 'daily',
     completed: false,
     streak: 3,
-    lastCompleted: new Date(Date.now() - 24 * 60 * 60 * 1000).getTime() // Yesterday
+    lastCompleted: new Date(Date.now() - 24 * 60 * 60 * 1000).getTime(), // Yesterday
+    // Moderate completion pattern
+    completionHistory: [
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).getTime(), // Yesterday
+      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).getTime(), // 2 days ago
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).getTime(), // 3 days ago
+      new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).getTime(), // 5 days ago
+      new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).getTime(), // 6 days ago
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).getTime(), // 9 days ago
+      new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).getTime(), // 10 days ago
+      new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).getTime(), // 11 days ago
+      new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).getTime(), // 13 days ago
+      new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).getTime(), // 14 days ago
+      new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).getTime(), // 15 days ago
+      new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).getTime(), // 17 days ago
+      new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).getTime(), // 18 days ago
+      new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).getTime(), // 19 days ago
+      new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).getTime(), // 21 days ago
+      new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).getTime(), // 22 days ago
+      new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).getTime(), // 23 days ago
+      new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).getTime(), // 25 days ago
+      new Date(Date.now() - 26 * 24 * 60 * 60 * 1000).getTime(), // 26 days ago
+      new Date(Date.now() - 27 * 24 * 60 * 60 * 1000).getTime(), // 27 days ago
+      new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).getTime(), // 29 days ago
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime(), // 30 days ago
+    ]
   },
   {
     id: 3,
@@ -431,7 +457,40 @@ const sampleHabits = [
     frequency: 'daily',
     completed: true,
     streak: 12,
-    lastCompleted: new Date().getTime()
+    lastCompleted: new Date().getTime(),
+    // Very consistent completion pattern
+    completionHistory: [
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).getTime(), // Yesterday
+      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).getTime(), // 2 days ago
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).getTime(), // 3 days ago
+      new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).getTime(), // 4 days ago
+      new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).getTime(), // 5 days ago
+      new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).getTime(), // 6 days ago
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).getTime(), // 8 days ago
+      new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).getTime(), // 9 days ago
+      new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).getTime(), // 10 days ago
+      new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).getTime(), // 11 days ago
+      new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).getTime(), // 12 days ago
+      new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).getTime(), // 13 days ago
+      new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).getTime(), // 14 days ago
+      new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).getTime(), // 15 days ago
+      new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).getTime(), // 16 days ago
+      new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).getTime(), // 17 days ago
+      new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).getTime(), // 18 days ago
+      new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).getTime(), // 19 days ago
+      new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).getTime(), // 20 days ago
+      new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).getTime(), // 21 days ago
+      new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).getTime(), // 22 days ago
+      new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).getTime(), // 23 days ago
+      new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).getTime(), // 24 days ago
+      new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).getTime(), // 25 days ago
+      new Date(Date.now() - 26 * 24 * 60 * 60 * 1000).getTime(), // 26 days ago
+      new Date(Date.now() - 27 * 24 * 60 * 60 * 1000).getTime(), // 27 days ago
+      new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).getTime(), // 28 days ago
+      new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).getTime(), // 29 days ago
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime(), // 30 days ago
+    ]
   },
   {
     id: 4,
@@ -440,7 +499,20 @@ const sampleHabits = [
     frequency: 'daily',
     completed: false,
     streak: 0,
-    lastCompleted: null
+    lastCompleted: null,
+    // Sporadic completion pattern
+    completionHistory: [
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).getTime(), // 3 days ago
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).getTime(), // 8 days ago
+      new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).getTime(), // 12 days ago
+      new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).getTime(), // 15 days ago
+      new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).getTime(), // 16 days ago
+      new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).getTime(), // 20 days ago
+      new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).getTime(), // 23 days ago
+      new Date(Date.now() - 27 * 24 * 60 * 60 * 1000).getTime(), // 27 days ago
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime(), // 30 days ago
+    ]
   },
   {
     id: 5,
@@ -449,42 +521,111 @@ const sampleHabits = [
     frequency: 'weekly',
     completed: true,
     streak: 5,
-    lastCompleted: new Date().getTime()
+    lastCompleted: new Date().getTime(),
+    // Weekly pattern
+    completionHistory: [
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).getTime(), // Yesterday
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).getTime(), // 14 days ago
+      new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).getTime(), // 21 days ago
+      new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).getTime(), // 28 days ago
+    ]
+  },
+  {
+    id: 6,
+    title: 'Exercise for 30 minutes',
+    category: 'fitness',
+    frequency: 'daily',
+    completed: true,
+    streak: 4,
+    lastCompleted: new Date().getTime(),
+    // Good but not perfect pattern
+    completionHistory: [
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).getTime(), // Yesterday
+      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).getTime(), // 2 days ago
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).getTime(), // 3 days ago
+      new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).getTime(), // 4 days ago
+      new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).getTime(), // 6 days ago
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime(), // 7 days ago
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).getTime(), // 8 days ago
+      new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).getTime(), // 9 days ago
+      new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).getTime(), // 11 days ago
+      new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).getTime(), // 12 days ago
+      new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).getTime(), // 13 days ago
+      new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).getTime(), // 14 days ago
+      new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).getTime(), // 16 days ago
+      new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).getTime(), // 17 days ago
+      new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).getTime(), // 18 days ago
+      new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).getTime(), // 19 days ago
+      new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).getTime(), // 21 days ago
+      new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).getTime(), // 22 days ago
+      new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).getTime(), // 23 days ago
+      new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).getTime(), // 24 days ago
+      new Date(Date.now() - 26 * 24 * 60 * 60 * 1000).getTime(), // 26 days ago
+      new Date(Date.now() - 27 * 24 * 60 * 60 * 1000).getTime(), // 27 days ago
+      new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).getTime(), // 28 days ago
+      new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).getTime(), // 29 days ago
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime(), // 30 days ago
+    ]
   }
 ]
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
-  const [habits, setHabits] = useState<any[]>(sampleHabits)
+  const { habits, loading, error, createHabit, toggleHabit, deleteHabit, createSampleHabits, migrateLocalStorageToDatabase } = useHabits()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<any>(null)
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false)
 
+  // Show loading state during migration
+  if (session?.user && loading && habits.length === 0) {
+    return (
+      <Container>
+        <Content>
+          <Title>Setting up your account...</Title>
+          <Subtitle>
+            We're transferring your habits and progress to your secure account. 
+            This will only take a moment.
+          </Subtitle>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '200px',
+            color: theme.colors.primary[600] 
+          }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              border: `3px solid ${theme.colors.primary[200]}`,
+              borderTop: `3px solid ${theme.colors.primary[600]}`,
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+          </div>
+        </Content>
+      </Container>
+    )
+  }
+
   const handleCreateHabit = () => {
     setIsModalOpen(true)
   }
 
-  const handleSaveHabit = (habit: { title: string; category: string; frequency: string }) => {
-    if (editingHabit) {
-      // Update existing habit
-      setHabits(prevHabits =>
-        prevHabits.map(h =>
-          h.id === editingHabit.id
-            ? { ...h, ...habit }
-            : h
-        )
-      )
-    } else {
-      // Create new habit
-      const newHabit = {
-        id: Date.now(),
-        ...habit,
-        completed: false,
-        streak: 0,
-        lastCompleted: null
+  const handleSaveHabit = async (habit: { title: string; category: string; frequency: string }) => {
+    try {
+      if (editingHabit) {
+        // Update existing habit - TODO: Implement update API
+        console.log('Update habit not implemented yet')
+      } else {
+        // Create new habit
+        await createHabit(habit)
       }
-      setHabits(prevHabits => [...prevHabits, newHabit])
+      setIsModalOpen(false)
+      setEditingHabit(null)
+    } catch (error) {
+      console.error('Error saving habit:', error)
     }
   }
 
@@ -493,8 +634,12 @@ export default function DashboardPage() {
     setIsModalOpen(true)
   }
 
-  const handleDeleteHabit = (habitId: number) => {
-    setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId))
+  const handleDeleteHabit = async (habitId: string) => {
+    try {
+      await deleteHabit(habitId)
+    } catch (error) {
+      console.error('Error deleting habit:', error)
+    }
   }
 
   const handleCloseModal = () => {
@@ -502,55 +647,12 @@ export default function DashboardPage() {
     setEditingHabit(null)
   }
 
-  const handleToggleHabit = (habitId: number) => {
-    setHabits(prevHabits =>
-      prevHabits.map(habit => {
-        if (habit.id === habitId) {
-          const now = new Date().getTime()
-          const wasCompleted = habit.completed
-          const lastCompleted = habit.lastCompleted
-          
-          let newStreak = habit.streak
-          
-          if (!wasCompleted) {
-            // Marking as completed
-            if (lastCompleted) {
-              const daysSinceLastCompleted = Math.floor((now - lastCompleted) / (1000 * 60 * 60 * 24))
-              if (daysSinceLastCompleted === 1) {
-                // Consecutive day
-                newStreak = habit.streak + 1
-              } else if (daysSinceLastCompleted > 1) {
-                // Gap in streak, reset to 1
-                newStreak = 1
-              } else {
-                // Same day, keep current streak
-                newStreak = habit.streak
-              }
-            } else {
-              // First time completing
-              newStreak = 1
-            }
-          } else {
-            // Unmarking as completed
-            if (lastCompleted) {
-              const daysSinceLastCompleted = Math.floor((now - lastCompleted) / (1000 * 60 * 60 * 24))
-              if (daysSinceLastCompleted === 0) {
-                // Same day, reduce streak
-                newStreak = Math.max(0, habit.streak - 1)
-              }
-            }
-          }
-          
-          return {
-            ...habit,
-            completed: !wasCompleted,
-            streak: newStreak,
-            lastCompleted: !wasCompleted ? now : null
-          }
-        }
-        return habit
-      })
-    )
+  const handleToggleHabit = async (habitId: string) => {
+    try {
+      await toggleHabit(habitId)
+    } catch (error) {
+      console.error('Error toggling habit:', error)
+    }
   }
 
   const handleSignIn = () => {
@@ -582,10 +684,10 @@ export default function DashboardPage() {
   return (
     <Container>
       <Content>
-        <Title>Your Peaceful Habits</Title>
+        <Title>Your Daily Routines</Title>
         <Subtitle>
-          Build mindful routines that bring calm and purpose to your daily life. 
-          Each habit is a step toward inner peace and personal growth.
+          Track your habits and build consistent routines that help you achieve your goals. 
+          Every small action compounds into lasting positive change.
         </Subtitle>
 
 
@@ -594,15 +696,25 @@ export default function DashboardPage() {
             <EmptyIcon>
               <Sparkles size={32} />
             </EmptyIcon>
-            <EmptyTitle>Begin Your Journey</EmptyTitle>
+            <EmptyTitle>Start Building Habits</EmptyTitle>
             <EmptyDescription>
-              Start building peaceful habits that align with your inner goals. 
-              Each small step brings you closer to a more mindful life.
+              Create your first habit and begin building the routines that will help you 
+              reach your goals. Consistency is the key to lasting change.
             </EmptyDescription>
             <ZenButton onClick={handleCreateHabit}>
               <Plus size={20} />
               Create Your First Habit
             </ZenButton>
+{session?.user && (
+              <div style={{ marginTop: '1rem' }}>
+                <ZenButton 
+                  onClick={() => createSampleHabits?.()} 
+                  style={{ background: 'transparent', border: `1px solid ${theme.colors.primary[200]}`, color: theme.colors.primary[600] }}
+                >
+                  Try Sample Habits
+                </ZenButton>
+              </div>
+            )}
           </EmptyState>
         ) : (
           <HabitsContainer>
@@ -624,31 +736,34 @@ export default function DashboardPage() {
         {/* Progress Calendar Section */}
         {habits.length > 0 && (
           <CalendarSection>
-            <CalendarTitle>Reflect on Your Progress</CalendarTitle>
+            <CalendarTitle>Track Your Progress</CalendarTitle>
             <CalendarDescription>
-              See your habit completion patterns and celebrate your mindful journey. 
-              Each filled day represents a step toward inner peace.
+              Visualize your habit completion patterns and celebrate your consistency. 
+              Each completed day builds momentum toward your goals.
             </CalendarDescription>
             <ProgressCalendar 
               habitLogs={habits
-                .filter(habit => habit.lastCompleted)
-                .map(habit => ({
-                  id: habit.id.toString(),
-                  habitId: habit.id.toString(),
-                  completedAt: new Date(habit.lastCompleted!)
-                }))
+                .flatMap(habit => 
+                  habit.logs
+                    .filter(log => log.completed)
+                    .map(log => ({
+                      id: log.id,
+                      habitId: habit.id,
+                      completedAt: new Date(log.date)
+                    }))
+                )
               }
             />
           </CalendarSection>
         )}
 
         {!session && habits.length > 0 && (
-          <SignInPrompt>
-            <SignInText>Save your progress and sync across devices</SignInText>
-            <SignInLink onClick={handleSignIn}>
-              Sign in to continue
-            </SignInLink>
-          </SignInPrompt>
+          <AccountPrompt>
+            <AccountText>Create an account to save your progress permanently and sync across devices</AccountText>
+            <AccountLink onClick={handleSignUp}>
+              Create free account
+            </AccountLink>
+          </AccountPrompt>
         )}
 
         {session && (

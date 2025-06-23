@@ -1,0 +1,39 @@
+name: Daily Habit Check
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Allow manual trigger for testing
+
+jobs:
+  daily-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Daily Habit Check
+        run: |
+          echo "Running daily habit check for $(date)"
+          
+          response=$(curl -s -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            ${{ secrets.APP_URL }}/api/habits/daily-check)
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Daily check successful"
+            echo "Response: $body"
+          else
+            echo "❌ Daily check failed with status $http_code"
+            echo "Response: $body"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Daily habit check failed. Please check the logs and your application." 

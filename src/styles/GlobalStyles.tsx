@@ -27,12 +27,7 @@ export const GlobalStyles = createGlobalStyle`
     background-color: ${theme.colors.background};
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Zen-like smooth scrolling */
     scroll-behavior: smooth;
-    /* Subtle background texture */
-    background-image: 
-      radial-gradient(circle at 25% 25%, rgba(0, 0, 0, 0.003) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(0, 0, 0, 0.003) 0%, transparent 50%);
     /* Mobile touch improvements */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -302,52 +297,6 @@ export const GlobalStyles = createGlobalStyle`
     animation: zenSlideIn 0.4s ease-out;
   }
 
-  /* Zen-like float animation */
-  @keyframes zenFloat {
-    0%, 100% {
-      transform: translateY(0px) rotate(0deg);
-      opacity: 0.3;
-    }
-    50% {
-      transform: translateY(-15px) rotate(180deg);
-      opacity: 0.5;
-    }
-  }
-
-  .zen-float {
-    animation: zenFloat 8s ease-in-out infinite;
-  }
-
-  /* Zen-like breathe animation */
-  @keyframes zenBreathe {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.8;
-    }
-    50% {
-      transform: scale(1.05);
-      opacity: 1;
-    }
-  }
-
-  .zen-breathe {
-    animation: zenBreathe 4s ease-in-out infinite;
-  }
-
-  /* Zen-like pulse animation */
-  @keyframes zenPulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
-  }
-
-  .zen-pulse {
-    animation: zenPulse 3s ease-in-out infinite;
-  }
-
   /* Zen-like shimmer animation */
   @keyframes zenShimmer {
     0% {
@@ -442,5 +391,60 @@ export const GlobalStyles = createGlobalStyle`
     .desktop-container {
       padding: ${theme.spacing[8]};
     }
+  }
+
+  /* Loading spinner animation */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Modal overlay animation */
+  @keyframes zenOverlayFadeIn {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0px);
+    }
+    to {
+      opacity: 1;
+      backdrop-filter: blur(2px);
+    }
+  }
+
+  /* Modal slide-in animation */
+  @keyframes zenSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Smooth slide-down animation for modals */
+  @keyframes zenSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* No flash on page load - prevent FOUC */
+  .no-flash {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  /* Progressive enhancement class */
+  .js-enabled .no-flash {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
   }
 ` 

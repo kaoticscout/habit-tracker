@@ -1,13 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 import Button from '@/components/ui/Button'
-import { Plus, LogIn, Sparkles } from 'lucide-react'
-import SignInModal from '@/components/SignInModal'
-import SignUpModal from '@/components/SignUpModal'
+import { Plus, Sparkles, Check } from 'lucide-react'
 
 const HeroSection = styled.section`
   min-height: 100vh;
@@ -16,8 +13,6 @@ const HeroSection = styled.section`
   justify-content: center;
   background: linear-gradient(135deg, ${theme.colors.primary[25]} 0%, ${theme.colors.background} 100%);
   padding: ${theme.spacing[8]} ${theme.spacing[4]};
-  position: relative;
-  overflow: hidden;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing[6]} ${theme.spacing[3]};
@@ -27,55 +22,12 @@ const HeroSection = styled.section`
   @media (min-width: ${theme.breakpoints.lg}) {
     padding: ${theme.spacing[16]} ${theme.spacing[4]};
   }
-  
-  /* Zen-like floating elements - more subtle */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 15%;
-    left: 8%;
-    width: 120px;
-    height: 120px;
-    background: radial-gradient(circle, ${theme.colors.primary[100]} 0%, transparent 80%);
-    border-radius: 50%;
-    opacity: 0.2;
-    animation: zenFloat 12s ease-in-out infinite;
-    
-    @media (max-width: ${theme.breakpoints.sm}) {
-      width: 80px;
-      height: 80px;
-      top: 10%;
-      left: 5%;
-    }
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 25%;
-    right: 12%;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle, ${theme.colors.primary[100]} 0%, transparent 80%);
-    border-radius: 50%;
-    opacity: 0.15;
-    animation: zenFloat 15s ease-in-out infinite reverse;
-    
-    @media (max-width: ${theme.breakpoints.sm}) {
-      width: 60px;
-      height: 60px;
-      bottom: 20%;
-      right: 8%;
-    }
-  }
 `
 
 const Container = styled.div`
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
-  position: relative;
-  z-index: 1;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     max-width: 100%;
@@ -86,7 +38,6 @@ const HeroContent = styled.div`
   text-align: center;
   max-width: 700px;
   margin: 0 auto;
-  animation: zenFadeIn 2s ease-out;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     max-width: 100%;
@@ -155,12 +106,6 @@ const ZenFeatures = styled.div`
 
 const ZenFeature = styled.div`
   text-align: center;
-  opacity: 0;
-  animation: zenFadeIn 2s ease-out forwards;
-  
-  &:nth-child(1) { animation-delay: 0.4s; }
-  &:nth-child(2) { animation-delay: 0.6s; }
-  &:nth-child(3) { animation-delay: 0.8s; }
   
   @media (max-width: ${theme.breakpoints.sm}) {
     min-width: 100px;
@@ -172,12 +117,6 @@ const FeatureIcon = styled.div`
   color: ${theme.colors.primary[500]};
   margin-bottom: ${theme.spacing[3]};
   opacity: 0.7;
-  transition: all ${theme.transitions.normal};
-  
-  &:hover {
-    opacity: 1;
-    transform: scale(1.1);
-  }
   
   @media (max-width: ${theme.breakpoints.sm}) {
     margin-bottom: ${theme.spacing[2]};
@@ -203,8 +142,6 @@ const CTAButtons = styled.div`
   gap: ${theme.spacing[4]};
   justify-content: center;
   flex-wrap: wrap;
-  opacity: 0;
-  animation: zenFadeIn 2s ease-out 1s forwards;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     gap: ${theme.spacing[3]};
@@ -269,33 +206,9 @@ const SecondaryButton = styled(Button)`
 
 export default function HomePage() {
   const router = useRouter()
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false)
 
   const handleGetStarted = () => {
     router.push('/dashboard')
-  }
-
-  const handleSignIn = () => {
-    setIsSignInModalOpen(true)
-  }
-
-  const handleCloseSignInModal = () => {
-    setIsSignInModalOpen(false)
-  }
-
-  const handleCloseSignUpModal = () => {
-    setIsSignUpModalOpen(false)
-  }
-
-  const handleSwitchToSignUp = () => {
-    setIsSignInModalOpen(false)
-    setIsSignUpModalOpen(true)
-  }
-
-  const handleSwitchToSignIn = () => {
-    setIsSignUpModalOpen(false)
-    setIsSignInModalOpen(true)
   }
 
   return (
@@ -303,11 +216,11 @@ export default function HomePage() {
       <HeroSection>
         <Container>
           <HeroContent>
-            <HeroTitle>Find Peace in Your Habits</HeroTitle>
+            <HeroTitle>Build Better Routines</HeroTitle>
             <HeroSubtitle>
-              A zen-inspired habit tracker that helps you build mindful routines 
-              with simplicity and inner calm. Transform your daily actions into 
-              peaceful moments of growth.
+              A minimalist habit tracker that helps you create consistent daily 
+              routines. Transform your goals into lasting habits with simplicity 
+              and focus.
             </HeroSubtitle>
             
             <ZenFeatures>
@@ -315,7 +228,7 @@ export default function HomePage() {
                 <FeatureIcon>
                   <Sparkles size={28} />
                 </FeatureIcon>
-                <FeatureText>Mindful</FeatureText>
+                <FeatureText>Focused</FeatureText>
               </ZenFeature>
               <ZenFeature>
                 <FeatureIcon>
@@ -325,35 +238,20 @@ export default function HomePage() {
               </ZenFeature>
               <ZenFeature>
                 <FeatureIcon>
-                  <LogIn size={28} />
+                  <Check size={28} />
                 </FeatureIcon>
-                <FeatureText>Peaceful</FeatureText>
+                <FeatureText>Consistent</FeatureText>
               </ZenFeature>
             </ZenFeatures>
             
             <CTAButtons>
               <ZenButton onClick={handleGetStarted}>
-                Begin Your Journey
+                Start Building Habits
               </ZenButton>
-              <SecondaryButton onClick={handleSignIn}>
-                Sign In
-              </SecondaryButton>
             </CTAButtons>
           </HeroContent>
         </Container>
       </HeroSection>
-
-      <SignInModal
-        isOpen={isSignInModalOpen}
-        onClose={handleCloseSignInModal}
-        onSwitchToSignUp={handleSwitchToSignUp}
-      />
-
-      <SignUpModal
-        isOpen={isSignUpModalOpen}
-        onClose={handleCloseSignUpModal}
-        onSwitchToSignIn={handleSwitchToSignIn}
-      />
     </>
   )
 } 

@@ -259,6 +259,9 @@ export default function SignInModal({ isOpen, onClose, onSwitchToSignUp }: SignI
     setIsLoading(true)
     setError('')
 
+    // Check if there's localStorage data before signing in
+    const hasLocalStorageData = localStorage.getItem('routinely-habits')
+
     const result = await signIn('credentials', {
       email,
       password,
@@ -269,6 +272,8 @@ export default function SignInModal({ isOpen, onClose, onSwitchToSignUp }: SignI
       setError('Invalid email or password')
       setIsLoading(false)
     } else {
+      // If there was localStorage data and sign-in was successful,
+      // the useHabits hook will handle the migration automatically
       onClose()
       setEmail('')
       setPassword('')

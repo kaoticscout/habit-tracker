@@ -118,27 +118,57 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean; $hasAc
       return `
         color: ${theme.colors.primary[700]};
         background: ${theme.colors.primary[50]};
-        border: 1px solid ${theme.colors.primary[200]};
+        border: 2px solid ${theme.colors.primary[300]};
         font-weight: ${theme.typography.fontWeight.medium};
       `
     }
     
     if ($hasActivity) {
-      const intensity = Math.min($activityLevel / 5, 1) // Normalize to 0-1
-      const alpha = 0.1 + (intensity * 0.4) // 0.1 to 0.5 opacity
+      // Show different intensity levels based on number of habits completed
+      let backgroundColor, textColor, fontWeight, boxShadow
+      
+      if ($activityLevel >= 5) {
+        // High activity - 5+ habits
+        backgroundColor = theme.colors.primary[600]
+        textColor = 'white'
+        fontWeight = theme.typography.fontWeight.semibold
+        boxShadow = '0 2px 6px rgba(14, 165, 233, 0.3)'
+      } else if ($activityLevel >= 3) {
+        // Medium-high activity - 3-4 habits
+        backgroundColor = theme.colors.primary[500]
+        textColor = 'white'
+        fontWeight = theme.typography.fontWeight.medium
+        boxShadow = '0 1px 4px rgba(14, 165, 233, 0.25)'
+      } else if ($activityLevel >= 2) {
+        // Medium activity - 2 habits
+        backgroundColor = theme.colors.primary[400]
+        textColor = 'white'
+        fontWeight = theme.typography.fontWeight.medium
+        boxShadow = '0 1px 3px rgba(14, 165, 233, 0.2)'
+      } else {
+        // Low activity - 1 habit
+        backgroundColor = theme.colors.primary[300]
+        textColor = 'white'
+        fontWeight = theme.typography.fontWeight.normal
+        boxShadow = '0 1px 2px rgba(14, 165, 233, 0.15)'
+      }
+      
       return `
-        color: ${theme.colors.primary[700]};
-        background: rgba(14, 165, 233, ${alpha});
-        font-weight: ${theme.typography.fontWeight.medium};
+        color: ${textColor};
+        background: ${backgroundColor};
+        font-weight: ${fontWeight};
+        box-shadow: ${boxShadow};
       `
     }
     
     return `
       color: ${theme.colors.text.secondary};
       background: transparent;
+      border: 1px solid ${theme.colors.gray[100]};
       
       &:hover {
         background: ${theme.colors.gray[50]};
+        border-color: ${theme.colors.gray[200]};
       }
     `
   }}
@@ -176,11 +206,12 @@ const LegendItem = styled.div`
   color: ${theme.colors.text.muted};
 `
 
-const LegendDot = styled.div<{ $color: string }>`
-  width: 8px;
-  height: 8px;
+const LegendDot = styled.div<{ $color: string; $border?: string }>`
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: ${({ $color }) => $color};
+  border: ${({ $border }) => $border || 'none'};
 `
 
 const Stats = styled.div`
@@ -205,6 +236,19 @@ const StatValue = styled.div`
 const StatLabel = styled.div`
   color: ${theme.colors.text.muted};
   font-size: ${theme.typography.fontSize.xs};
+`
+
+const SimpleExplanation = styled.div`
+  text-align: center;
+  color: ${theme.colors.text.secondary};
+  font-size: ${theme.typography.fontSize.sm};
+  margin-bottom: ${theme.spacing[4]};
+  line-height: ${theme.typography.lineHeight.relaxed};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+    margin-bottom: ${theme.spacing[3]};
+  }
 `
 
 export default function ProgressCalendar({ habitLogs, className }: ProgressCalendarProps) {
@@ -311,18 +355,22 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
         <div style={{ display: 'flex', gap: theme.spacing[1] }}>
           <NavigationButton
             onClick={() => navigateMonth('prev')}
-            disabled={currentMonth === 0 && currentYear === 2024} // Limit to reasonable past
+            disabled={currentMonth === 0 && currentYear === 2024}
           >
             <ChevronLeft size={16} />
           </NavigationButton>
           <NavigationButton
             onClick={() => navigateMonth('next')}
-            disabled={currentMonth === 11 && currentYear === 2030} // Limit to reasonable future
+            disabled={currentMonth === 11 && currentYear === 2030}
           >
             <ChevronRight size={16} />
           </NavigationButton>
         </div>
       </CalendarHeader>
+      
+      <SimpleExplanation>
+        Darker blue shows more habits completed that day. Today is highlighted with a border.
+      </SimpleExplanation>
       
       <CalendarGrid>
         {dayLabels.map(label => (
@@ -338,8 +386,21 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
               $isToday={day.date ? isToday(day.date) : false}
               $hasActivity={activity.hasActivity}
               $activityLevel={activity.activityLevel}
+              title={activity.hasActivity ? `${activity.activityLevel} habit${activity.activityLevel > 1 ? 's' : ''} completed` : undefined}
             >
               {day.date?.getDate()}
+              {activity.hasActivity && activity.activityLevel > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  fontSize: '8px',
+                  fontWeight: 'bold',
+                  opacity: 0.9
+                }}>
+                  {activity.activityLevel}
+                </div>
+              )}
             </DayCell>
           )
         })}
@@ -348,27 +409,31 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
       <CalendarFooter>
         <Legend>
           <LegendItem>
-            <LegendDot $color={theme.colors.primary[200]} />
-            <span>Less activity</span>
+            <LegendDot $color={theme.colors.primary[300]} />
+            <span>Fewer habits</span>
           </LegendItem>
           <LegendItem>
-            <LegendDot $color={theme.colors.primary[500]} />
-            <span>More activity</span>
+            <LegendDot $color={theme.colors.primary[600]} />
+            <span>More habits</span>
+          </LegendItem>
+          <LegendItem>
+            <LegendDot $color="transparent" $border={`2px solid ${theme.colors.primary[300]}`} />
+            <span>Today</span>
           </LegendItem>
         </Legend>
         
         <Stats>
           <Stat>
             <StatValue>{completionRate}%</StatValue>
-            <StatLabel>Completion</StatLabel>
+            <StatLabel>Days active</StatLabel>
           </Stat>
           <Stat>
             <StatValue>{activeDays}</StatValue>
-            <StatLabel>Active days</StatLabel>
+            <StatLabel>Days with habits</StatLabel>
           </Stat>
           <Stat>
             <StatValue>{totalCompletions}</StatValue>
-            <StatLabel>Total habits</StatLabel>
+            <StatLabel>Total completions</StatLabel>
           </Stat>
         </Stats>
       </CalendarFooter>
