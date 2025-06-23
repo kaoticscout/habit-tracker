@@ -6,11 +6,27 @@ This guide will walk you through deploying your Routinely habit tracker to Verce
 
 1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
 2. **GitHub Repository**: Your code should be in a GitHub repository
-3. **Database**: You'll need a PostgreSQL database (we recommend Vercel Postgres)
+3. **Database**: You'll need a PostgreSQL database (we recommend Supabase - see detailed setup below)
 
 ## Step 1: Prepare Your Database
 
-### Option A: Vercel Postgres (Recommended)
+### Option A: Supabase (Recommended) 🌟
+
+**Why Supabase?**
+- Free tier with 500MB database and 50,000 monthly active users
+- Excellent PostgreSQL compatibility with Prisma
+- Easy-to-use dashboard and built-in monitoring
+- Automatic backups and global CDN
+
+**📖 Detailed Setup Guide**: See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for complete step-by-step instructions.
+
+**Quick Setup:**
+1. Create account at [supabase.com](https://supabase.com)
+2. Create new project with strong password
+3. Get connection string from Settings → Database
+4. Use format: `postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true&connection_limit=1`
+
+### Option B: Vercel Postgres
 
 1. Go to your [Vercel Dashboard](https://vercel.com/dashboard)
 2. Navigate to the **Storage** tab
@@ -18,11 +34,10 @@ This guide will walk you through deploying your Routinely habit tracker to Verce
 4. Name your database (e.g., `routinely-db`)
 5. Select your region and click **Create**
 
-### Option B: External PostgreSQL
+### Option C: Other PostgreSQL Providers
 
 You can use any PostgreSQL provider like:
 - **Neon** (free tier available)
-- **Supabase** (free tier available) 
 - **Railway** (free tier available)
 - **AWS RDS**
 - **Digital Ocean**
@@ -34,10 +49,10 @@ You'll need to set up these environment variables in Vercel:
 ### Required Variables
 
 ```bash
-# Database
-DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
+# Database (Supabase example)
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true&connection_limit=1"
 
-# Authentication
+# Authentication (CRITICAL - update URL after deployment)
 NEXTAUTH_URL="https://your-app-name.vercel.app"
 NEXTAUTH_SECRET="your-secure-nextauth-secret"
 
@@ -104,6 +119,7 @@ vercel
 2. Navigate to **Settings** → **Environment Variables**
 3. Add all the required variables listed above
 4. For **DATABASE_URL**: 
+   - If using Supabase, copy from your project settings (see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md))
    - If using Vercel Postgres, copy from your database settings
    - If using external provider, copy their connection string
 
@@ -111,7 +127,13 @@ vercel
 
 After deployment, you need to initialize your database:
 
-### Option A: Using Vercel Console
+### For Supabase Users
+
+Follow the detailed schema setup in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) - includes both Prisma migration and manual SQL options.
+
+### For Other Databases
+
+#### Option A: Using Vercel Console
 
 1. Go to your project dashboard
 2. Click **Functions** tab
@@ -123,7 +145,7 @@ vercel env pull .env.local
 npm run db:migrate
 ```
 
-### Option B: Direct Database Connection
+#### Option B: Direct Database Connection
 
 If you have database access, run these commands locally with production DATABASE_URL:
 
@@ -152,9 +174,9 @@ npx prisma generate
 ### Common Issues
 
 **1. Database Connection Error**
-- Verify `DATABASE_URL` is correct
-- Ensure database allows external connections
-- Check if database requires SSL (`?sslmode=require`)
+- **Supabase**: Verify password and project reference in connection string
+- **General**: Ensure database allows external connections
+- Check SSL requirements (`?sslmode=require` or `?pgbouncer=true`)
 
 **2. NextAuth Configuration Error**
 - Verify `NEXTAUTH_URL` matches your deployment URL
@@ -170,6 +192,7 @@ npx prisma generate
 - Run `npx prisma generate` locally and commit
 - Ensure database schema is migrated
 - Check Prisma logs in function logs
+- **Supabase**: Use the dashboard's SQL Editor to verify schema
 
 **5. Environment Variables Not Loading**
 - Verify all required env vars are set in Vercel
@@ -181,6 +204,7 @@ npx prisma generate
 1. **Function Logs**: Vercel Dashboard → Functions → Click any function
 2. **Build Logs**: Vercel Dashboard → Deployments → Click deployment
 3. **Real-time Logs**: Use `vercel logs` CLI command
+4. **Supabase Logs**: Check database logs in Supabase dashboard
 
 ## Daily Habit Check Verification
 
@@ -193,25 +217,31 @@ Your daily habit check should automatically work with Vercel Cron:
 
 ## Performance Tips
 
-1. **Database Indexing**: Consider adding indexes for frequently queried fields
-2. **Connection Pooling**: Use connection pooling for better database performance
+1. **Database Indexing**: Your schema includes optimal indexes
+2. **Connection Pooling**: Supabase includes pgBouncer for connection pooling
 3. **Caching**: Consider implementing Redis caching for frequent queries
-4. **Monitoring**: Set up monitoring with Vercel Analytics
+4. **Monitoring**: Set up monitoring with Vercel Analytics and Supabase dashboard
 
 ## Security Checklist
 
 - ✅ All secrets are generated securely and unique
 - ✅ Environment variables are set in Vercel (not in code)
-- ✅ Database connection uses SSL
+- ✅ Database connection uses SSL/pgBouncer
 - ✅ NEXTAUTH_URL matches your actual domain
 - ✅ `.env` files are in `.gitignore`
 
 ## Post-Deployment
 
-1. **Monitor Performance**: Check Vercel Analytics
+1. **Monitor Performance**: Check Vercel Analytics and Supabase dashboard
 2. **Set Up Monitoring**: Consider error tracking (Sentry, etc.)
-3. **Backup Strategy**: Set up database backups
+3. **Backup Strategy**: Supabase includes automatic backups
 4. **Domain SSL**: Verify SSL certificate is active
 5. **Test All Features**: Registration, habits, calendar, daily check
+
+## Database-Specific Resources
+
+- **Supabase**: [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) - Complete setup guide
+- **Vercel Postgres**: [Vercel Postgres Docs](https://vercel.com/docs/storage/vercel-postgres)
+- **General**: [Prisma Deployment Guide](https://www.prisma.io/docs/guides/deployment)
 
 Your Routinely app should now be live and fully functional on Vercel! 🎉 
