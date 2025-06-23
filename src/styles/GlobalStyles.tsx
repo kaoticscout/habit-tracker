@@ -209,6 +209,36 @@ export const GlobalStyles = createGlobalStyle`
     animation: zenFadeIn ${theme.transitions.slow} ease-out;
   }
 
+  /* Zen-like overlay fade in animation (no movement) */
+  @keyframes zenOverlayFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .zen-overlay-fade-in {
+    animation: zenOverlayFadeIn 0.3s ease-out;
+  }
+
+  /* Zen-like slide in animation */
+  @keyframes zenSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .zen-slide-in {
+    animation: zenSlideIn 0.4s ease-out;
+  }
+
   /* Zen-like pulse animation */
   @keyframes zenPulse {
     0%, 100% {

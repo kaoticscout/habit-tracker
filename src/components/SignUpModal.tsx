@@ -17,123 +17,182 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: ${theme.spacing[4]};
+  backdrop-filter: blur(2px);
+  animation: zenOverlayFadeIn 0.3s ease-out;
 `
 
 const Modal = styled.div`
   background-color: ${theme.colors.background};
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[8]};
-  max-width: 360px;
+  border-radius: ${theme.borderRadius.xl};
+  padding: ${theme.spacing[12]};
+  max-width: 380px;
   width: 100%;
-  box-shadow: ${theme.shadows.sm};
-`
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${theme.spacing[8]};
-`
-
-const Title = styled.h2`
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.normal};
-  color: ${theme.colors.text.primary};
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+  animation: zenSlideIn 0.4s ease-out;
+  position: relative;
 `
 
 const CloseButton = styled.button`
+  position: absolute;
+  top: ${theme.spacing[4]};
+  right: ${theme.spacing[4]};
   background: none;
   border: none;
   color: ${theme.colors.text.disabled};
   cursor: pointer;
-  padding: ${theme.spacing[1]};
+  padding: ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.full};
+  transition: all ${theme.transitions.normal};
   
   &:hover {
     color: ${theme.colors.text.secondary};
+    background-color: ${theme.colors.gray[50]};
   }
+`
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing[8]};
+  margin-top: ${theme.spacing[4]};
+`
+
+const InputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing[3]};
+`
+
+const Label = styled.label`
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.secondary};
+  font-weight: ${theme.typography.fontWeight.normal};
+  letter-spacing: 0.01em;
 `
 
 const Input = styled.input`
   width: 100%;
-  padding: ${theme.spacing[4]};
+  padding: ${theme.spacing[4]} ${theme.spacing[5]};
   border: none;
   border-bottom: 1px solid ${theme.colors.gray[200]};
   font-size: ${theme.typography.fontSize.base};
   color: ${theme.colors.text.primary};
   background-color: transparent;
-  margin-bottom: ${theme.spacing[6]};
+  transition: all ${theme.transitions.normal};
   
   &:focus {
     outline: none;
-    border-bottom-color: ${theme.colors.text.primary};
+    border-bottom-color: ${theme.colors.primary[400]};
+    background-color: ${theme.colors.primary[50]};
   }
   
   &::placeholder {
     color: ${theme.colors.text.disabled};
+    font-weight: ${theme.typography.fontWeight.normal};
   }
 `
 
 const ErrorMessage = styled.div`
   color: ${theme.colors.error};
   font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[6]};
   text-align: center;
+  padding: ${theme.spacing[3]};
+  background-color: ${theme.colors.error}08;
+  border-radius: ${theme.borderRadius.md};
+  font-weight: ${theme.typography.fontWeight.normal};
 `
 
 const SuccessMessage = styled.div`
   color: ${theme.colors.success};
   font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[6]};
   text-align: center;
+  padding: ${theme.spacing[3]};
+  background-color: ${theme.colors.success}08;
+  border-radius: ${theme.borderRadius.md};
+  font-weight: ${theme.typography.fontWeight.normal};
 `
 
 const SignUpButton = styled.button`
   width: 100%;
-  background: none;
-  border: 1px solid ${theme.colors.gray[200]};
-  color: ${theme.colors.text.primary};
+  background-color: ${theme.colors.primary[500]};
+  border: none;
+  color: white;
   font-size: ${theme.typography.fontSize.base};
   font-weight: ${theme.typography.fontWeight.medium};
   cursor: pointer;
   padding: ${theme.spacing[4]};
-  margin-bottom: ${theme.spacing[6]};
-  border-radius: ${theme.borderRadius.base};
-  transition: all 0.2s ease;
+  border-radius: ${theme.borderRadius.lg};
+  transition: all ${theme.transitions.normal};
+  margin-top: ${theme.spacing[6]};
   
   &:hover {
-    border-color: ${theme.colors.text.primary};
-    color: ${theme.colors.text.primary};
+    background-color: ${theme.colors.primary[600]};
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px ${theme.colors.primary[200]};
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
   
   &:disabled {
+    background-color: ${theme.colors.gray[200]};
     color: ${theme.colors.text.disabled};
-    border-color: ${theme.colors.gray[100]};
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`
+
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  margin: ${theme.spacing[8]} 0;
+  color: ${theme.colors.text.disabled};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.normal};
+  
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: ${theme.colors.gray[100]};
+  }
+  
+  &::before {
+    margin-right: ${theme.spacing[4]};
+  }
+  
+  &::after {
+    margin-left: ${theme.spacing[4]};
   }
 `
 
 const SwitchPrompt = styled.div`
   text-align: center;
-  color: ${theme.colors.text.disabled};
+  color: ${theme.colors.text.secondary};
   font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.normal};
 `
 
 const SwitchLink = styled.button`
   background: none;
   border: none;
-  color: ${theme.colors.text.primary};
+  color: ${theme.colors.primary[600]};
   cursor: pointer;
   font-weight: ${theme.typography.fontWeight.medium};
   margin-left: ${theme.spacing[1]};
+  transition: color ${theme.transitions.fast};
   
   &:hover {
-    color: ${theme.colors.text.secondary};
+    color: ${theme.colors.primary[700]};
   }
 `
 
@@ -194,34 +253,45 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToSignIn }: SignU
   return (
     <Overlay onClick={handleClose}>
       <Modal onClick={(e) => e.stopPropagation()}>
-        <Header>
-          <Title>Create account</Title>
-          <CloseButton onClick={handleClose}>
-            <X size={18} />
-          </CloseButton>
-        </Header>
+        <CloseButton onClick={handleClose}>
+          <X size={20} />
+        </CloseButton>
 
-        <form onSubmit={handleSubmit}>
-          <Input
-            type="text"
-            placeholder="Name (optional)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        <Form onSubmit={handleSubmit}>
+          <InputGroup>
+            <Label htmlFor="name">Name (optional)</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Enter your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </InputGroup>
+
+          <InputGroup>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </InputGroup>
+
+          <InputGroup>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Create a password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </InputGroup>
           
           {error && <ErrorMessage>{error}</ErrorMessage>}
           {success && <SuccessMessage>{success}</SuccessMessage>}
@@ -232,7 +302,9 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToSignIn }: SignU
           >
             {isLoading ? 'Creating account...' : 'Create account'}
           </SignUpButton>
-        </form>
+        </Form>
+
+        <Divider>or</Divider>
 
         <SwitchPrompt>
           Already have an account?
