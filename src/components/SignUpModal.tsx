@@ -4,6 +4,7 @@ import { useState } from 'react'
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 import { X } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 interface SignUpModalProps {
   isOpen: boolean
@@ -286,14 +287,31 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToSignIn }: SignU
       })
 
       if (response.ok) {
-        setSuccess('Account created successfully! You can now sign in.')
-        setName('')
-        setEmail('')
-        setPassword('')
-        setTimeout(() => {
-          onClose()
-          onSwitchToSignIn()
-        }, 2000)
+        const data = await response.json()
+        setSuccess('Account created successfully! Signing you in...')
+        
+        // Automatically sign in the user
+        const signInResult = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        })
+
+        if (signInResult?.ok) {
+          setName('')
+          setEmail('')
+          setPassword('')
+          setTimeout(() => {
+            onClose()
+            // User will be automatically redirected to dashboard due to authentication
+          }, 1500)
+        } else {
+          setError('Account created but sign-in failed. Please try signing in manually.')
+          setTimeout(() => {
+            onClose()
+            onSwitchToSignIn()
+          }, 2000)
+        }
       } else {
         const data = await response.json()
         setError(data.error || 'Something went wrong')
@@ -366,7 +384,7 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToSignIn }: SignU
             type="submit"
             disabled={isLoading}
           >
-            {isLoading ? 'Creating account...' : 'Create account'}
+            {isLoading ? 'Creating account & signing in...' : 'Create account'}
           </SignUpButton>
         </Form>
 
