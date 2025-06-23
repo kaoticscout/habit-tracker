@@ -5,6 +5,7 @@ import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 import { X } from 'lucide-react'
 import { signIn } from 'next-auth/react'
+import { clearAllAppData, hasGuestData } from '@/utils/localStorage'
 
 interface SignUpModalProps {
   isOpen: boolean
@@ -304,6 +305,7 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToSignIn }: SignU
           setTimeout(() => {
             onClose()
             // User will be automatically redirected to dashboard due to authentication
+            // The useHabits hook will handle migrating localStorage data and clearing it
           }, 1500)
         } else {
           setError('Account created but sign-in failed. Please try signing in manually.')

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { clearAllAppData } from '@/utils/localStorage'
 
 interface HabitLog {
   id: string
@@ -99,8 +100,8 @@ export function useHabits() {
         }
       }
 
-      // Clear localStorage after successful migration
-      localStorage.removeItem('routinely-habits')
+      // Clear all localStorage data after successful migration
+      clearAllAppData()
       
       // Refresh habits from database
       await fetchHabits()
@@ -393,8 +394,8 @@ export function useHabits() {
           } catch (err) {
             console.error('Error checking for migration:', err)
           }
-          // Clear localStorage regardless since user is now authenticated
-          localStorage.removeItem('routinely-habits')
+          // Clear all localStorage data since user is now authenticated
+          clearAllAppData()
         }
         // Fetch habits from database
         await fetchHabits()
