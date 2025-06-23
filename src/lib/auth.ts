@@ -10,7 +10,9 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Remove the adapter when using credentials provider with JWT strategy
+  // The Prisma adapter conflicts with JWT strategy for credentials providers
+  // adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -68,10 +70,14 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user && token) {
-        session.user.id = token.id
+        session.user.id = token.id as string
       }
       return session
     },
   },
+  pages: {
+    signIn: '/signin',
+  },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 } 

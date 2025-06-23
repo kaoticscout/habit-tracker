@@ -15,7 +15,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, email, password } = await request.json()
+    let requestData
+    try {
+      requestData = await request.json()
+    } catch (parseError) {
+      console.error('Failed to parse request JSON:', parseError)
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const { name, email, password } = requestData
     console.log('Request data parsed:', { name, email, hasPassword: !!password })
 
     if (!email || !password) {
@@ -25,11 +36,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+
     // Check if user already exists
     console.log('Checking if user exists:', email)
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+    let existingUser
+    try {
+      existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
+    } catch (dbError) {
+      console.error('Database error checking existing user:', dbError)
+      return NextResponse.json(
+        { error: 'Database connection error' },
+        { status: 500 }
+      )
+    }
 
     if (existingUser) {
       console.log('User already exists:', email)
@@ -41,17 +70,35 @@ export async function POST(request: NextRequest) {
 
     // Hash password
     console.log('Hashing password')
-    const hashedPassword = await bcrypt.hash(password, 12)
+    let hashedPassword
+    try {
+      hashedPassword = await bcrypt.hash(password, 12)
+    } catch (hashError) {
+      console.error('Password hashing error:', hashError)
+      return NextResponse.json(
+        { error: 'Password processing error' },
+        { status: 500 }
+      )
+    }
 
     // Create user
     console.log('Creating user:', { name, email })
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      }
-    })
+    let user
+    try {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+        }
+      })
+    } catch (createError) {
+      console.error('Database error creating user:', createError)
+      return NextResponse.json(
+        { error: 'Failed to create user account' },
+        { status: 500 }
+      )
+    }
 
     console.log('User created successfully:', user.id)
     return NextResponse.json(
