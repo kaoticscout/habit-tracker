@@ -4,7 +4,50 @@ This guide helps resolve common deployment issues when deploying Routinely to Ve
 
 ## 🚨 Common Build Errors
 
-### 1. NextAuth Build Error
+### 1. Prisma Client Generation Error
+
+**Error Message:**
+```
+Learn how: https://pris.ly/d/vercel-build
+at Ba (/vercel/path0/node_modules/@prisma/client/runtime/library.js:33:69)
+Error: Failed to collect page data for /api/auth/[...nextauth]
+```
+
+**Root Cause:** Prisma client not properly generated during Vercel build process.
+
+**✅ Solution (FIXED):**
+
+The following changes have been made to fix this:
+
+1. **Added postinstall script** in `package.json`:
+   ```json
+   "postinstall": "prisma generate"
+   ```
+
+2. **Updated build script** to ensure Prisma generation:
+   ```json
+   "build": "prisma generate && next build"
+   ```
+
+3. **Enhanced Prisma schema** with explicit output path:
+   ```prisma
+   generator client {
+     provider = "prisma-client-js"
+     output   = "../node_modules/.prisma/client"
+   }
+   ```
+
+4. **Updated Next.js config** for better Prisma handling:
+   ```javascript
+   webpack: (config, { isServer }) => {
+     if (isServer) {
+       config.externals.push('@prisma/client')
+     }
+     return config
+   }
+   ```
+
+### 2. NextAuth Build Error
 
 **Error Message:**
 ```
@@ -36,7 +79,7 @@ Error: Failed to collect page data for /api/auth/[...nextauth]
    - After adding environment variables, trigger a new deployment
    - Go to Deployments tab → Click "..." → Redeploy
 
-### 2. Database Connection Error
+### 3. Database Connection Error
 
 **Error Message:**
 ```
@@ -67,7 +110,7 @@ PrismaClientInitializationError: Can't reach database server
    npx prisma db pull --print
    ```
 
-### 3. Environment Variables Not Loading
+### 4. Environment Variables Not Loading
 
 **Error Message:**
 ```
@@ -92,7 +135,7 @@ NEXTAUTH_SECRET is not defined
    git push origin main
    ```
 
-### 4. Prisma Schema Issues
+### 5. Prisma Schema Issues
 
 **Error Message:**
 ```
@@ -137,13 +180,13 @@ Schema parsing error
 2. **Generate Secure Secrets:**
    ```bash
    # NEXTAUTH_SECRET
-   openssl rand -base64 32
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
    
    # JWT_SECRET
-   openssl rand -hex 32
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    
    # CRON_SECRET
-   openssl rand -hex 32
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
 ### Phase 2: Database Setup
@@ -162,28 +205,36 @@ Schema parsing error
    # Copy schema from SUPABASE_SETUP.md
    ```
 
-### Phase 3: Code Fixes
+### Phase 3: Code Fixes (ALREADY APPLIED)
+
+The following fixes have been automatically applied:
+
+1. **Prisma Configuration:**
+   - ✅ Added `postinstall` script
+   - ✅ Updated build script
+   - ✅ Enhanced schema configuration
+   - ✅ Improved Next.js webpack config
+
+2. **NextAuth Configuration:**
+   - ✅ Simplified configuration
+   - ✅ Removed problematic pages config
+   - ✅ Added proper TypeScript types
+   - ✅ Enhanced error handling
+
+### Phase 4: Deploy
 
 1. **Commit Latest Changes:**
    ```bash
    git add .
-   git commit -m "Fix NextAuth configuration for Vercel"
+   git commit -m "Fix Prisma client generation for Vercel"
    git push origin main
    ```
 
-2. **Verify Build Locally:**
-   ```bash
-   npm run build
-   # Should complete without errors
-   ```
-
-### Phase 4: Deploy
-
-1. **Trigger New Deployment:**
+2. **Trigger New Deployment:**
    - Push to GitHub (auto-deploys)
    - Or manually redeploy from Vercel dashboard
 
-2. **Monitor Build Logs:**
+3. **Monitor Build Logs:**
    - Watch for any new errors
    - Check function logs after deployment
 
@@ -227,6 +278,7 @@ Before deploying, ensure:
 - [ ] Build passes locally (`npm run build`)
 - [ ] No TypeScript errors (`npm run type-check`)
 - [ ] All tests pass (`npm run test`)
+- [ ] Latest code pushed to GitHub
 
 ## 📞 Getting Help
 
@@ -251,10 +303,11 @@ Before deploying, ensure:
 
 ### If Build Still Fails:
 
-1. **Remove pages config from NextAuth** (already done)
-2. **Simplify NextAuth configuration** (already done)
-3. **Add external packages to Next.js config** (already done)
-4. **Ensure TypeScript types are correct** (already done)
+1. **Prisma client generation** (✅ FIXED)
+2. **Remove pages config from NextAuth** (✅ FIXED)
+3. **Simplify NextAuth configuration** (✅ FIXED)
+4. **Add external packages to Next.js config** (✅ FIXED)
+5. **Ensure TypeScript types are correct** (✅ FIXED)
 
 ### If Database Connection Fails:
 
