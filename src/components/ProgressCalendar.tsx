@@ -346,7 +346,15 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
     })
   }
   
-  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const dayLabels = [
+    { label: 'S', key: 'sun' },
+    { label: 'M', key: 'mon' },
+    { label: 'T', key: 'tue' },
+    { label: 'W', key: 'wed' },
+    { label: 'T', key: 'thu' },
+    { label: 'F', key: 'fri' },
+    { label: 'S', key: 'sat' }
+  ]
   
   return (
     <CalendarContainer className={className}>
@@ -373,8 +381,8 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
       </SimpleExplanation>
       
       <CalendarGrid>
-        {dayLabels.map(label => (
-          <DayLabel key={label}>{label}</DayLabel>
+        {dayLabels.map(day => (
+          <DayLabel key={day.key}>{day.label}</DayLabel>
         ))}
         
         {calendarDays.map((day, index) => {

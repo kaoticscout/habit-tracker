@@ -7,12 +7,8 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
+  preload: true,
 })
-
-export const htmlAttributes = {
-  lang: 'en',
-  className: `no-fouc ${inter.variable}`,
-}
 
 export const metadata: Metadata = {
   title: 'Routinely - Build Better Routines',
@@ -50,18 +46,46 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html {...htmlAttributes}>
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Routinely" />
-        {/* FOUC prevention CSS */}
-        <style>{`
-          html.no-fouc { opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out; }
-          html { transition: opacity 0.3s ease-in-out; }
-        `}</style>
+        {/* Minimal critical CSS for FOUC prevention only */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            html {
+              background-color: #f0f9ff;
+              font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #f0f9ff;
+              color: #1f2937;
+              font-family: inherit;
+            }
+            .skip-link {
+              position: absolute;
+              top: -40px;
+              left: 6px;
+              background: #000;
+              color: #fff;
+              padding: 8px;
+              text-decoration: none;
+              border-radius: 4px;
+              z-index: 1000;
+              font-size: 14px;
+            }
+            .skip-link:focus {
+              top: 6px;
+            }
+          `
+        }} />
       </head>
       <body className={inter.className}>
         <Providers>
@@ -73,24 +97,6 @@ export default function RootLayout({
             {children}
           </main>
         </Providers>
-        {/* Remove no-fouc class after DOM is ready */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                function showContent() {
-                  document.documentElement.classList.remove('no-fouc');
-                }
-                if (document.readyState === 'loading') {
-                  document.addEventListener('DOMContentLoaded', showContent);
-                } else {
-                  showContent();
-                }
-                setTimeout(showContent, 100);
-              })();
-            `,
-          }}
-        />
       </body>
     </html>
   )

@@ -3,6 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import type { User } from 'next-auth'
 
 // Ensure required environment variables are available
 if (!process.env.NEXTAUTH_SECRET) {
@@ -20,7 +21,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<User | null> {
         console.log('Authorize called with:', { 
           email: credentials?.email, 
           hasPassword: !!credentials?.password 
@@ -69,7 +70,7 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name
+            name: user.name || null
           }
         } catch (error) {
           console.error('Auth error:', error)
