@@ -2,19 +2,28 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/Providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
-  title: 'Habit Tracker - Minimal & Effective',
-  description: 'A minimalist habit tracking application to help you build better habits and achieve your goals.',
-  keywords: ['habit tracker', 'productivity', 'goals', 'minimalist'],
-  authors: [{ name: 'Habit Tracker Team' }],
+  title: 'Zen Habit Tracker - Peaceful & Mindful',
+  description: 'A zen-inspired, minimalist habit tracking application to help you build better habits with peace and mindfulness.',
+  keywords: ['habit tracker', 'zen', 'mindfulness', 'peaceful', 'minimalist', 'meditation', 'wellness'],
+  authors: [{ name: 'Zen Habit Tracker Team' }],
   robots: 'index, follow',
+  themeColor: '#f0f9ff',
+  colorScheme: 'light',
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#f0f9ff',
 }
 
 export default function RootLayout({
@@ -23,10 +32,24 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Zen Habit Tracker" />
+        {/* Immediate no-flash script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                document.documentElement.style.visibility = 'hidden';
+                document.documentElement.style.opacity = '0';
+              })();
+            `,
+          }}
+        />
       </head>
       <body className={inter.className}>
         <Providers>
@@ -37,6 +60,30 @@ export default function RootLayout({
             {children}
           </main>
         </Providers>
+        {/* Show content after everything loads */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function showContent() {
+                  document.documentElement.style.visibility = 'visible';
+                  document.documentElement.style.opacity = '1';
+                  document.documentElement.style.transition = 'opacity 0.3s ease-in-out';
+                }
+                
+                // Show content when DOM is ready
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', showContent);
+                } else {
+                  showContent();
+                }
+                
+                // Fallback: show content after a short delay
+                setTimeout(showContent, 100);
+              })();
+            `,
+          }}
+        />
       </body>
     </html>
   )

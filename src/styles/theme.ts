@@ -1,43 +1,43 @@
 export const theme = {
   colors: {
-    // Primary colors - minimal palette
+    // Zen-inspired color palette - soft, calming, natural
     primary: {
-      50: '#eff6ff',
-      100: '#dbeafe',
-      200: '#bfdbfe',
-      300: '#93c5fd',
-      400: '#60a5fa',
-      500: '#3b82f6',
-      600: '#2563eb',
-      700: '#1d4ed8',
-      800: '#1e40af',
-      900: '#1e3a8a',
+      50: '#f0f9ff',
+      100: '#e0f2fe',
+      200: '#bae6fd',
+      300: '#7dd3fc',
+      400: '#38bdf8',
+      500: '#0ea5e9',
+      600: '#0284c7',
+      700: '#0369a1',
+      800: '#075985',
+      900: '#0c4a6e',
     },
-    // Neutral grays
+    // Soft, warm grays inspired by natural materials
     gray: {
-      50: '#f9fafb',
-      100: '#f3f4f6',
-      200: '#e5e7eb',
-      300: '#d1d5db',
-      400: '#9ca3af',
-      500: '#6b7280',
-      600: '#4b5563',
-      700: '#374151',
-      800: '#1f2937',
-      900: '#111827',
+      50: '#fafafa',
+      100: '#f5f5f5',
+      200: '#e5e5e5',
+      300: '#d4d4d4',
+      400: '#a3a3a3',
+      500: '#737373',
+      600: '#525252',
+      700: '#404040',
+      800: '#262626',
+      900: '#171717',
     },
-    // Semantic colors
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-    // Background colors
-    background: '#ffffff',
-    surface: '#f9fafb',
-    // Text colors
+    // Muted, zen-like semantic colors
+    success: '#059669',
+    warning: '#d97706',
+    error: '#dc2626',
+    // Zen background colors - warm whites and soft creams
+    background: '#fefefe',
+    surface: '#fafafa',
+    // Soft, readable text colors
     text: {
-      primary: '#111827',
-      secondary: '#6b7280',
-      disabled: '#9ca3af',
+      primary: '#1c1917',
+      secondary: '#57534e',
+      disabled: '#a8a29e',
     },
   },
   typography: {
@@ -98,12 +98,13 @@ export const theme = {
     '2xl': '1rem',
     full: '9999px',
   },
+  // Zen-like shadows - very subtle and soft
   shadows: {
-    sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    base: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-    md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    sm: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+    base: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
   },
   breakpoints: {
     sm: '640px',
@@ -112,10 +113,11 @@ export const theme = {
     xl: '1280px',
     '2xl': '1536px',
   },
+  // Zen-like transitions - smooth and gentle
   transitions: {
-    fast: '150ms ease-in-out',
-    normal: '250ms ease-in-out',
-    slow: '350ms ease-in-out',
+    fast: '200ms cubic-bezier(0.4, 0, 0.2, 1)',
+    normal: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
+    slow: '500ms cubic-bezier(0.4, 0, 0.2, 1)',
   },
 } as const
 

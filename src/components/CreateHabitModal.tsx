@@ -110,24 +110,24 @@ const SuggestionsGrid = styled.div`
   margin-bottom: ${theme.spacing[6]};
 `
 
-const SuggestionButton = styled.button`
+const SuggestionButton = styled.button<{ $selected: boolean }>`
   text-align: left;
   padding: ${theme.spacing[3]} ${theme.spacing[4]};
-  border: 1px solid ${theme.colors.gray[200]};
+  border: 1px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.gray[200]};
   border-radius: ${theme.borderRadius.md};
-  background-color: ${theme.colors.background};
+  background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.background};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
   
   &:hover {
-    border-color: ${theme.colors.primary[300]};
-    background-color: ${theme.colors.primary[50]};
+    border-color: ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.primary[300]};
+    background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.primary[50]};
   }
 `
 
-const SuggestionText = styled.span`
-  color: ${theme.colors.text.primary};
-  font-size: ${theme.typography.fontSize.base};
+const SuggestionText = styled.span<{ $selected: boolean }>`
+  color: ${({ $selected }) => $selected ? theme.colors.primary[700] : theme.colors.text.primary};
+  font-weight: ${({ $selected }) => $selected ? theme.typography.fontWeight.medium : theme.typography.fontWeight.normal};
 `
 
 const CustomHabitInput = styled.input`
@@ -408,9 +408,10 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
               {suggestions[selectedCategory as keyof typeof suggestions]?.map((suggestion) => (
                 <SuggestionButton
                   key={suggestion}
+                  $selected={selectedHabit === suggestion}
                   onClick={() => handleSuggestionSelect(suggestion)}
                 >
-                  <SuggestionText>{suggestion}</SuggestionText>
+                  <SuggestionText $selected={selectedHabit === suggestion}>{suggestion}</SuggestionText>
                 </SuggestionButton>
               ))}
             </SuggestionsGrid>

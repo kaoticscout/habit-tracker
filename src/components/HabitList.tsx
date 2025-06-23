@@ -33,7 +33,7 @@ const HabitItem = styled.div`
   padding: ${theme.spacing[4]} 0;
   padding-right: ${theme.spacing[4]};
   border-bottom: 1px solid ${theme.colors.gray[100]};
-  transition: all ${theme.transitions.fast};
+  transition: all ${theme.transitions.normal};
   overflow: hidden;
   
   &:last-child {
@@ -46,6 +46,8 @@ const HabitItem = styled.div`
     padding-left: ${theme.spacing[4]};
     padding-right: ${theme.spacing[4]};
     border-radius: ${theme.borderRadius.md};
+    transform: translateY(-1px);
+    box-shadow: ${theme.shadows.sm};
   }
 `
 
@@ -53,13 +55,13 @@ const Checkbox = styled.button<{ $completed: boolean }>`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.gray[400]};
+  color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.gray[300]};
   margin-right: ${theme.spacing[4]};
-  transition: all ${theme.transitions.fast};
+  transition: all ${theme.transitions.normal};
   
   &:hover {
-    color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.primary[500]};
-    transform: scale(1.1);
+    color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.primary[400]};
+    transform: scale(1.05);
   }
 `
 
@@ -77,7 +79,7 @@ const ActionButtons = styled.div`
   transform: translateY(-50%) translateX(100%);
   display: flex;
   gap: ${theme.spacing[2]};
-  transition: transform ${theme.transitions.fast};
+  transition: transform ${theme.transitions.normal};
   z-index: 10;
   
   ${HabitItem}:hover & {
@@ -89,23 +91,23 @@ const ActionButton = styled.button<{ $variant: 'edit' | 'delete' }>`
   width: 36px;
   height: 36px;
   border: 1px solid ${({ $variant }) => 
-    $variant === 'edit' ? theme.colors.gray[800] : 'transparent'
+    $variant === 'edit' ? theme.colors.gray[200] : 'transparent'
   };
   border-radius: ${theme.borderRadius.full};
   background-color: ${({ $variant }) => 
     $variant === 'edit' ? theme.colors.background : theme.colors.error
   };
   color: ${({ $variant }) => 
-    $variant === 'edit' ? theme.colors.gray[800] : 'white'
+    $variant === 'edit' ? theme.colors.gray[600] : 'white'
   };
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all ${theme.transitions.fast};
+  transition: all ${theme.transitions.normal};
   opacity: 0;
   transform: scale(0.8);
-  box-shadow: ${theme.shadows.md};
+  box-shadow: ${theme.shadows.sm};
   
   ${HabitItem}:hover & {
     opacity: 1;
@@ -116,8 +118,8 @@ const ActionButton = styled.button<{ $variant: 'edit' | 'delete' }>`
     background-color: ${({ $variant }) => 
       $variant === 'edit' ? theme.colors.gray[50] : '#dc2626'
     };
-    transform: scale(1.1);
-    box-shadow: ${theme.shadows.lg};
+    transform: scale(1.05);
+    box-shadow: ${theme.shadows.md};
   }
   
   &:active {
@@ -129,7 +131,8 @@ const HabitTitle = styled.span<{ $completed: boolean }>`
   font-size: ${theme.typography.fontSize.lg};
   color: ${({ $completed }) => $completed ? theme.colors.text.disabled : theme.colors.text.primary};
   text-decoration: ${({ $completed }) => $completed ? 'line-through' : 'none'};
-  transition: all ${theme.transitions.fast};
+  transition: all ${theme.transitions.normal};
+  font-weight: ${theme.typography.fontWeight.normal};
 `
 
 const HabitMeta = styled.div`
@@ -148,11 +151,13 @@ const StreakIcon = styled.div`
   color: ${theme.colors.text.secondary};
   display: flex;
   align-items: center;
+  opacity: 0.7;
 `
 
 const StreakNumber = styled.span`
   font-size: ${theme.typography.fontSize.sm};
   color: ${theme.colors.text.secondary};
+  font-weight: ${theme.typography.fontWeight.medium};
 `
 
 const FrequencyTag = styled.span`
@@ -161,6 +166,7 @@ const FrequencyTag = styled.span`
   display: flex;
   align-items: center;
   gap: ${theme.spacing[1]};
+  opacity: 0.8;
 `
 
 const CategoryTag = styled.span`
@@ -169,6 +175,7 @@ const CategoryTag = styled.span`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: ${theme.typography.fontWeight.medium};
+  opacity: 0.7;
 `
 
 const EmptyState = styled.div`
@@ -176,6 +183,7 @@ const EmptyState = styled.div`
   padding: ${theme.spacing[12]} 0;
   color: ${theme.colors.text.secondary};
   font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.normal};
 `
 
 export default function HabitList({ habits, onToggleHabit, onEditHabit, onDeleteHabit }: HabitListProps) {
@@ -204,7 +212,7 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
           <Checkbox
             $completed={habit.completed || false}
             onClick={() => onToggleHabit(habit.id)}
-            aria-label={habit.completed ? 'Mark habit as incomplete' : 'Mark habit as complete'}
+            aria-label={`${habit.completed ? 'Unmark' : 'Mark'} ${habit.title} as ${habit.completed ? 'incomplete' : 'complete'}`}
           >
             {habit.completed ? (
               <CheckCircle size={24} />
@@ -223,9 +231,7 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
                 <StreakIcon>
                   <CheckSquare size={14} />
                 </StreakIcon>
-                <StreakNumber>
-                  {habit.streak || 0}
-                </StreakNumber>
+                <StreakNumber>{habit.streak || 0}</StreakNumber>
               </StreakCounter>
               
               <FrequencyTag>
@@ -240,20 +246,25 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
           </HabitContent>
           
           <ActionButtons>
-            <ActionButton
-              $variant="edit"
-              onClick={() => handleEdit(habit)}
-              aria-label="Edit habit"
-            >
-              <Edit size={16} />
-            </ActionButton>
-            <ActionButton
-              $variant="delete"
-              onClick={() => handleDelete(habit.id)}
-              aria-label="Delete habit"
-            >
-              <Trash2 size={16} />
-            </ActionButton>
+            {onEditHabit && (
+              <ActionButton
+                $variant="edit"
+                onClick={() => handleEdit(habit)}
+                aria-label={`Edit ${habit.title}`}
+              >
+                <Edit size={16} />
+              </ActionButton>
+            )}
+            
+            {onDeleteHabit && (
+              <ActionButton
+                $variant="delete"
+                onClick={() => handleDelete(habit.id)}
+                aria-label={`Delete ${habit.title}`}
+              >
+                <Trash2 size={16} />
+              </ActionButton>
+            )}
           </ActionButtons>
         </HabitItem>
       ))}
