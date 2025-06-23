@@ -257,33 +257,63 @@ export function useHabits() {
       const result = await response.json()
       console.log('API success response:', result)
       
-      // Update local state
-      setHabits(prev => prev.map(habit => {
-        if (habit.id === habitId) {
-          const today = new Date(result.date)
-          const existingLogIndex = habit.logs.findIndex(log => {
-            const logDate = new Date(log.date)
-            return logDate.toDateString() === today.toDateString()
-          })
+      // Update local state with improved logic
+      setHabits(prev => {
+        const updatedHabits = prev.map(habit => {
+          if (habit.id === habitId) {
+            const resultDate = new Date(result.date)
+            resultDate.setHours(0, 0, 0, 0)
+            
+            console.log('Updating habit logs for:', habit.title)
+            console.log('Result date:', resultDate.toISOString())
+            console.log('Result completed:', result.completed)
+            console.log('Current logs:', habit.logs.map(log => ({ 
+              id: log.id, 
+              date: new Date(log.date).toISOString(), 
+              completed: log.completed 
+            })))
 
-          let newLogs = [...habit.logs]
-          if (existingLogIndex >= 0) {
-            newLogs[existingLogIndex] = {
-              ...newLogs[existingLogIndex],
-              completed: result.completed
-            }
-          } else {
-            newLogs.push({
-              id: Date.now().toString(),
-              date: today,
-              completed: result.completed
+            const existingLogIndex = habit.logs.findIndex(log => {
+              const logDate = new Date(log.date)
+              logDate.setHours(0, 0, 0, 0)
+              return logDate.getTime() === resultDate.getTime()
             })
-          }
 
-          return { ...habit, logs: newLogs }
-        }
-        return habit
-      }))
+            let newLogs = [...habit.logs]
+            
+            if (existingLogIndex >= 0) {
+              // Update existing log
+              newLogs[existingLogIndex] = {
+                ...newLogs[existingLogIndex],
+                completed: result.completed
+              }
+              console.log('Updated existing log at index:', existingLogIndex)
+            } else if (result.completed) {
+              // Add new log only if completed is true
+              newLogs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                date: resultDate,
+                completed: result.completed
+              })
+              console.log('Added new log')
+            }
+
+            const updatedHabit = { ...habit, logs: newLogs }
+            console.log('Updated habit logs:', updatedHabit.logs.map(log => ({ 
+              id: log.id, 
+              date: new Date(log.date).toISOString(), 
+              completed: log.completed 
+            })))
+            
+            return updatedHabit
+          }
+          return habit
+        })
+        
+        console.log('State update completed')
+        return updatedHabits
+      })
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to toggle habit')
       console.error('Error toggling habit:', err)

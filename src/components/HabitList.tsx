@@ -368,12 +368,24 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Check if completed today
+    console.log(`Getting status for habit: ${habit.title}`)
+    console.log('Today date:', today.toISOString())
+    console.log('Habit logs:', habit.logs.map(log => ({
+      id: log.id,
+      date: new Date(log.date).toISOString(),
+      completed: log.completed
+    })))
+    
+    // Check if completed today with more robust date comparison
     const todayLog = habit.logs.find(log => {
       const logDate = new Date(log.date)
       logDate.setHours(0, 0, 0, 0)
-      return logDate.getTime() === today.getTime() && log.completed
+      const isToday = logDate.getTime() === today.getTime()
+      console.log(`Comparing log date ${logDate.toISOString()} with today ${today.toISOString()}: ${isToday}, completed: ${log.completed}`)
+      return isToday && log.completed
     })
+    
+    console.log('Today log found:', !!todayLog)
     
     // Calculate streak
     let streak = 0
@@ -408,10 +420,13 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
       }
     }
     
-    return {
+    const result = {
       completed: !!todayLog,
       streak
     }
+    
+    console.log(`Status result for ${habit.title}:`, result)
+    return result
   }
 
   const handleEdit = (habit: Habit) => {
