@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -24,8 +21,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -42,19 +38,18 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?    @unique
   password      String?
   emailVerified DateTime?
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts Account[]
-  sessions Session[]
-  habits   Habit[]
-  logs     HabitLog[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  accounts      Account[]
+  logs          HabitLog[]
+  habits        Habit[]
+  sessions      Session[]
 
   @@map("users")
 }
@@ -69,17 +64,16 @@ model VerificationToken {
 }
 
 model Habit {
-  id          String   @id @default(cuid())
-  title       String
-  category    String   @default("general")
-  frequency   String   @default("daily") // daily, weekly, monthly, custom
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userId String
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs   HabitLog[]
+  id        String     @id @default(cuid())
+  title     String
+  category  String     @default("general")
+  frequency String     @default("daily")
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  userId    String
+  logs      HabitLog[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("habits")
 }
@@ -88,16 +82,14 @@ model HabitLog {
   id        String   @id @default(cuid())
   date      DateTime
   completed Boolean  @default(false)
-  notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  habitId String
-  habit   Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitId   String
+  userId    String
+  notes     String?
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([habitId, date])
   @@map("habit_logs")
-} 
+}
