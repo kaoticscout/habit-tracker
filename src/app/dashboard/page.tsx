@@ -6,6 +6,7 @@ import { theme } from '@/styles/theme'
 import Button from '@/components/ui/Button'
 import CreateHabitModal from '@/components/CreateHabitModal'
 import HabitList from '@/components/HabitList'
+import ProgressCalendar from '@/components/ProgressCalendar'
 import { Plus, Sparkles } from 'lucide-react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SignInModal from '@/components/SignInModal'
@@ -13,11 +14,19 @@ import SignUpModal from '@/components/SignUpModal'
 
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, ${theme.colors.primary[50]} 0%, ${theme.colors.background} 100%);
+  background: linear-gradient(135deg, ${theme.colors.primary[25]} 0%, ${theme.colors.background} 100%);
   padding: ${theme.spacing[8]} ${theme.spacing[4]};
   position: relative;
   
-  /* Zen-like background texture */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[6]} ${theme.spacing[3]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    padding: ${theme.spacing[12]} ${theme.spacing[4]};
+  }
+  
+  /* Zen-like background texture - more subtle */
   &::before {
     content: '';
     position: fixed;
@@ -26,48 +35,85 @@ const Container = styled.div`
     right: 0;
     bottom: 0;
     background-image: 
-      radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.003) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(0, 0, 0, 0.003) 0%, transparent 50%);
+      radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.002) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(0, 0, 0, 0.002) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
   }
 `
 
 const Content = styled.div`
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
   text-align: center;
-  animation: zenFadeIn 1s ease-out;
+  animation: zenFadeIn 1.5s ease-out;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    max-width: 100%;
+  }
 `
 
 const Title = styled.h1`
-  font-size: ${theme.typography.fontSize['3xl']};
-  font-weight: ${theme.typography.fontWeight.normal};
+  font-size: clamp(1.875rem, 6vw, ${theme.typography.fontSize['3xl']});
+  font-weight: ${theme.typography.fontWeight.light};
   color: ${theme.colors.text.primary};
   margin-bottom: ${theme.spacing[4]};
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[3]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[6]};
+  }
 `
 
 const Subtitle = styled.p`
-  font-size: ${theme.typography.fontSize.lg};
+  font-size: clamp(1rem, 3vw, ${theme.typography.fontSize.lg});
   color: ${theme.colors.text.secondary};
   margin-bottom: ${theme.spacing[12]};
-  line-height: 1.7;
+  line-height: ${theme.typography.lineHeight.loose};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[8]};
+    line-height: ${theme.typography.lineHeight.relaxed};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[16]};
+  }
 `
 
 const EmptyState = styled.div`
   background-color: ${theme.colors.surface};
-  border-radius: ${theme.borderRadius.lg};
+  border-radius: ${theme.borderRadius.xl};
   padding: ${theme.spacing[12]};
   margin-bottom: ${theme.spacing[8]};
   border: 1px solid ${theme.colors.gray[100]};
-  box-shadow: ${theme.shadows.sm};
+  box-shadow: ${theme.shadows.xs};
+  transition: all ${theme.transitions.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[8]};
+    margin-bottom: ${theme.spacing[6]};
+    border-radius: ${theme.borderRadius.lg};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    padding: ${theme.spacing[16]};
+    margin-bottom: ${theme.spacing[12]};
+  }
+  
+  &:hover {
+    box-shadow: ${theme.shadows.sm};
+  }
 `
 
 const EmptyIcon = styled.div`
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   background-color: ${theme.colors.primary[100]};
   border-radius: ${theme.borderRadius.full};
   display: flex;
@@ -75,21 +121,55 @@ const EmptyIcon = styled.div`
   justify-content: center;
   margin: 0 auto ${theme.spacing[6]};
   color: ${theme.colors.primary[600]};
-  opacity: 0.8;
+  opacity: 0.7;
+  transition: all ${theme.transitions.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 64px;
+    height: 64px;
+    margin-bottom: ${theme.spacing[4]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[8]};
+  }
+  
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 `
 
 const EmptyTitle = styled.h2`
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.normal};
+  font-size: clamp(1.25rem, 4vw, ${theme.typography.fontSize.xl});
+  font-weight: ${theme.typography.fontWeight.light};
   color: ${theme.colors.text.primary};
   margin-bottom: ${theme.spacing[3]};
+  letter-spacing: -0.01em;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[2]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[4]};
+  }
 `
 
 const EmptyDescription = styled.p`
   color: ${theme.colors.text.secondary};
-  line-height: 1.7;
+  line-height: ${theme.typography.lineHeight.loose};
   margin-bottom: ${theme.spacing[6]};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[4]};
+    line-height: ${theme.typography.lineHeight.relaxed};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[8]};
+  }
 `
 
 const SignInPrompt = styled.div`
@@ -101,10 +181,36 @@ const SignInPrompt = styled.div`
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.gray[100]};
   text-align: center;
+  transition: all ${theme.transitions.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing[4]};
+    padding: ${theme.spacing[3]};
+    border-radius: ${theme.borderRadius.md};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-top: ${theme.spacing[8]};
+    padding: ${theme.spacing[6]};
+    border-radius: ${theme.borderRadius.xl};
+  }
+  
+  &:hover {
+    background-color: ${theme.colors.gray[25]};
+  }
 `
 
 const SignInText = styled.div`
   margin-bottom: ${theme.spacing[2]};
+  font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[1]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[3]};
+  }
 `
 
 const SignInLink = styled.button`
@@ -113,7 +219,9 @@ const SignInLink = styled.button`
   color: ${theme.colors.primary[600]};
   cursor: pointer;
   font-weight: ${theme.typography.fontWeight.medium};
-  transition: color ${theme.transitions.fast};
+  transition: color ${theme.transitions.normal};
+  min-height: 44px;
+  min-width: 44px;
   
   &:hover {
     color: ${theme.colors.primary[700]};
@@ -122,19 +230,44 @@ const SignInLink = styled.button`
 
 const HabitsContainer = styled.div`
   text-align: left;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin: 0 -${theme.spacing[3]};
+  }
 `
 
 const AddHabitButton = styled.div`
   text-align: center;
   margin-top: ${theme.spacing[8]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing[6]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-top: ${theme.spacing[12]};
+  }
 `
 
 const ZenButton = styled(Button)`
-  transition: all ${theme.transitions.normal};
+  transition: all ${theme.transitions.zen};
+  font-weight: ${theme.typography.fontWeight.medium};
+  min-height: 48px;
+  min-width: 160px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+    max-width: 280px;
+    min-height: 52px;
+  }
   
   &:hover {
     transform: translateY(-1px);
     box-shadow: ${theme.shadows.md};
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `
 
@@ -147,6 +280,23 @@ const SaveProgressPrompt = styled.div`
   background-color: ${theme.colors.gray[50]};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.gray[100]};
+  transition: all ${theme.transitions.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing[6]};
+    padding: ${theme.spacing[3]};
+    border-radius: ${theme.borderRadius.md};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-top: ${theme.spacing[12]};
+    padding: ${theme.spacing[6]};
+    border-radius: ${theme.borderRadius.xl};
+  }
+  
+  &:hover {
+    background-color: ${theme.colors.gray[25]};
+  }
 `
 
 const SaveProgressLink = styled.button`
@@ -156,7 +306,9 @@ const SaveProgressLink = styled.button`
   cursor: pointer;
   font-weight: ${theme.typography.fontWeight.medium};
   margin-left: ${theme.spacing[1]};
-  transition: color ${theme.transitions.fast};
+  transition: color ${theme.transitions.normal};
+  min-height: 44px;
+  min-width: 44px;
   
   &:hover {
     color: ${theme.colors.text.secondary};
@@ -170,14 +322,86 @@ const ZenFeatures = styled.div`
   margin-bottom: ${theme.spacing[8]};
   flex-wrap: wrap;
   opacity: 0;
-  animation: zenFadeIn 1s ease-out 0.3s forwards;
+  animation: zenFadeIn 1.5s ease-out 0.4s forwards;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[4]};
+    margin-bottom: ${theme.spacing[6]};
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    gap: ${theme.spacing[8]};
+    margin-bottom: ${theme.spacing[10]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    gap: ${theme.spacing[8]};
+    margin-bottom: ${theme.spacing[12]};
+  }
 `
 
 const ZenFeature = styled.div`
   text-align: center;
-  color: ${theme.colors.text.secondary};
+  color: ${theme.colors.text.muted};
   font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
+  font-weight: ${theme.typography.fontWeight.normal};
+  letter-spacing: 0.01em;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+    min-width: 100px;
+  }
+`
+
+const CalendarSection = styled.div`
+  margin-top: ${theme.spacing[8]};
+  margin-bottom: ${theme.spacing[6]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing[6]};
+    margin-bottom: ${theme.spacing[4]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-top: ${theme.spacing[12]};
+    margin-bottom: ${theme.spacing[8]};
+  }
+`
+
+const CalendarTitle = styled.h2`
+  font-size: clamp(1.5rem, 4vw, ${theme.typography.fontSize['2xl']});
+  font-weight: ${theme.typography.fontWeight.light};
+  color: ${theme.colors.text.primary};
+  margin-bottom: ${theme.spacing[4]};
+  letter-spacing: -0.02em;
+  text-align: center;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[3]};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[6]};
+  }
+`
+
+const CalendarDescription = styled.p`
+  color: ${theme.colors.text.secondary};
+  text-align: center;
+  margin-bottom: ${theme.spacing[6]};
+  line-height: ${theme.typography.lineHeight.loose};
+  font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[4]};
+    line-height: ${theme.typography.lineHeight.relaxed};
+  }
+  
+  @media (min-width: ${theme.breakpoints.lg}) {
+    margin-bottom: ${theme.spacing[8]};
+  }
 `
 
 // Sample habits with different streak values
@@ -395,6 +619,27 @@ export default function DashboardPage() {
               </ZenButton>
             </AddHabitButton>
           </HabitsContainer>
+        )}
+
+        {/* Progress Calendar Section */}
+        {habits.length > 0 && (
+          <CalendarSection>
+            <CalendarTitle>Reflect on Your Progress</CalendarTitle>
+            <CalendarDescription>
+              See your habit completion patterns and celebrate your mindful journey. 
+              Each filled day represents a step toward inner peace.
+            </CalendarDescription>
+            <ProgressCalendar 
+              habitLogs={habits
+                .filter(habit => habit.lastCompleted)
+                .map(habit => ({
+                  id: habit.id.toString(),
+                  habitId: habit.id.toString(),
+                  completedAt: new Date(habit.lastCompleted!)
+                }))
+              }
+            />
+          </CalendarSection>
         )}
 
         {!session && habits.length > 0 && (

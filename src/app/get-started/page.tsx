@@ -185,7 +185,7 @@ export default function GetStartedPage() {
             />
           </InputGroup>
           
-          <Button type="submit" $fullWidth $size="lg">
+          <Button type="submit" $size="lg">
             {isLogin ? 'Sign In' : 'Create Account'}
           </Button>
         </Form>

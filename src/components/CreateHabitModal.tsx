@@ -19,21 +19,38 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: ${theme.spacing[4]};
+  backdrop-filter: blur(2px);
+  animation: zenOverlayFadeIn 0.3s ease-out;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]};
+  }
 `
 
 const Modal = styled.div`
   background-color: ${theme.colors.background};
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[6]};
-  max-width: 500px;
+  border-radius: ${theme.borderRadius.xl};
+  padding: ${theme.spacing[10]};
+  max-width: 480px;
   width: 100%;
-  box-shadow: ${theme.shadows.xl};
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+  animation: zenSlideIn 0.4s ease-out;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[8]};
+    max-width: 100%;
+    border-radius: ${theme.borderRadius.lg};
+    max-height: 85vh;
+  }
 `
 
 const Header = styled.div`
@@ -41,60 +58,175 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: ${theme.spacing[6]};
+  position: relative;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-bottom: ${theme.spacing[4]};
+  }
 `
 
 const Title = styled.h2`
   font-size: ${theme.typography.fontSize.xl};
   font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.text.primary};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.lg};
+  }
 `
 
 const CloseButton = styled.button`
+  position: absolute;
+  top: ${theme.spacing[4]};
+  right: ${theme.spacing[4]};
   background: none;
   border: none;
-  color: ${theme.colors.text.secondary};
+  color: ${theme.colors.text.disabled};
   cursor: pointer;
   padding: ${theme.spacing[2]};
-  border-radius: ${theme.borderRadius.base};
+  border-radius: ${theme.borderRadius.full};
+  transition: all ${theme.transitions.normal};
+  min-height: 44px;
+  min-width: 44px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    top: ${theme.spacing[3]};
+    right: ${theme.spacing[3]};
+  }
   
   &:hover {
-    background-color: ${theme.colors.gray[100]};
+    color: ${theme.colors.text.secondary};
+    background-color: ${theme.colors.gray[50]};
+  }
+`
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing[6]};
+  margin-top: ${theme.spacing[4]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[5]};
+    margin-top: ${theme.spacing[3]};
+  }
+`
+
+const InputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing[2]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[1]};
+  }
+`
+
+const Label = styled.label`
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.secondary};
+  font-weight: ${theme.typography.fontWeight.normal};
+  letter-spacing: 0.01em;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+  }
+`
+
+const Input = styled.input`
+  width: 100%;
+  padding: ${theme.spacing[4]} ${theme.spacing[5]};
+  border: none;
+  border-bottom: 1px solid ${theme.colors.gray[200]};
+  font-size: ${theme.typography.fontSize.base};
+  color: ${theme.colors.text.primary};
+  background-color: transparent;
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]} ${theme.spacing[4]};
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 52px;
+  }
+  
+  &:focus {
+    outline: none;
+    border-bottom-color: ${theme.colors.primary[400]};
+    background-color: ${theme.colors.primary[50]};
+  }
+  
+  &::placeholder {
+    color: ${theme.colors.text.disabled};
+    font-weight: ${theme.typography.fontWeight.normal};
+  }
+`
+
+const Select = styled.select`
+  width: 100%;
+  padding: ${theme.spacing[4]} ${theme.spacing[5]};
+  border: none;
+  border-bottom: 1px solid ${theme.colors.gray[200]};
+  font-size: ${theme.typography.fontSize.base};
+  color: ${theme.colors.text.primary};
+  background-color: transparent;
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  cursor: pointer;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]} ${theme.spacing[4]};
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 52px;
+  }
+  
+  &:focus {
+    outline: none;
+    border-bottom-color: ${theme.colors.primary[400]};
+    background-color: ${theme.colors.primary[50]};
+  }
+  
+  option {
+    background-color: ${theme.colors.background};
+    color: ${theme.colors.text.primary};
   }
 `
 
 const CategoryGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: ${theme.spacing[3]};
-  margin-bottom: ${theme.spacing[6]};
-`
-
-const CategoryButton = styled.button<{ $selected: boolean }>`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: ${theme.spacing[4]};
-  border: 2px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.gray[200]};
-  border-radius: ${theme.borderRadius.lg};
-  background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.background};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  margin-top: ${theme.spacing[2]};
   
-  &:hover {
-    border-color: ${theme.colors.primary[400]};
-    background-color: ${theme.colors.primary[50]};
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: ${theme.spacing[2]};
   }
 `
 
-const CategoryIcon = styled.div`
-  color: ${theme.colors.primary[600]};
-  margin-bottom: ${theme.spacing[2]};
-`
-
-const CategoryName = styled.span`
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.primary};
+const CategoryButton = styled.button<{ selected: boolean }>`
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  border: 1px solid ${props => props.selected ? theme.colors.primary[300] : theme.colors.gray[200]};
+  background-color: ${props => props.selected ? theme.colors.primary[50] : 'transparent'};
+  color: ${props => props.selected ? theme.colors.primary[700] : theme.colors.text.secondary};
+  border-radius: ${theme.borderRadius.lg};
   font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.normal};
+  cursor: pointer;
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[2]} ${theme.spacing[3]};
+    font-size: ${theme.typography.fontSize.xs};
+    min-height: 44px;
+  }
+  
+  &:hover {
+    border-color: ${theme.colors.primary[400]};
+    background-color: ${theme.colors.primary[25]};
+    color: ${theme.colors.primary[600]};
+  }
 `
 
 const SuggestionsTitle = styled.h3`
@@ -102,120 +234,164 @@ const SuggestionsTitle = styled.h3`
   font-weight: ${theme.typography.fontWeight.semibold};
   color: ${theme.colors.text.primary};
   margin-bottom: ${theme.spacing[4]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.base};
+    margin-bottom: ${theme.spacing[3]};
+  }
 `
 
 const SuggestionsGrid = styled.div`
   display: grid;
   gap: ${theme.spacing[2]};
   margin-bottom: ${theme.spacing[6]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[1]};
+    margin-bottom: ${theme.spacing[4]};
+  }
 `
 
-const SuggestionButton = styled.button<{ $selected: boolean }>`
+const SuggestionButton = styled.button<{ selected: boolean }>`
   text-align: left;
   padding: ${theme.spacing[3]} ${theme.spacing[4]};
-  border: 1px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.gray[200]};
+  border: 1px solid ${props => props.selected ? theme.colors.primary[300] : theme.colors.gray[200]};
   border-radius: ${theme.borderRadius.md};
-  background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.background};
+  background-color: ${props => props.selected ? theme.colors.primary[50] : 'transparent'};
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[2]} ${theme.spacing[3]};
+    min-height: 44px;
+  }
   
   &:hover {
-    border-color: ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.primary[300]};
-    background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.primary[50]};
+    border-color: ${theme.colors.primary[400]};
+    background-color: ${theme.colors.primary[25]};
   }
 `
 
-const SuggestionText = styled.span<{ $selected: boolean }>`
-  color: ${({ $selected }) => $selected ? theme.colors.primary[700] : theme.colors.text.primary};
-  font-weight: ${({ $selected }) => $selected ? theme.typography.fontWeight.medium : theme.typography.fontWeight.normal};
-`
-
-const CustomHabitInput = styled.input`
-  width: 100%;
-  padding: ${theme.spacing[3]} ${theme.spacing[4]};
-  border: 1px solid ${theme.colors.gray[200]};
-  border-radius: ${theme.borderRadius.md};
-  font-size: ${theme.typography.fontSize.base};
-  color: ${theme.colors.text.primary};
-  background-color: ${theme.colors.background};
-  margin-bottom: ${theme.spacing[4]};
+const SuggestionText = styled.span<{ selected: boolean }>`
+  color: ${props => props.selected ? theme.colors.primary[700] : theme.colors.text.primary};
+  font-weight: ${props => props.selected ? theme.typography.fontWeight.medium : theme.typography.fontWeight.normal};
+  font-size: ${theme.typography.fontSize.sm};
   
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary[500]};
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
   }
-  
-  &::placeholder {
-    color: ${theme.colors.text.disabled};
-  }
-`
-
-const Actions = styled.div`
-  display: flex;
-  gap: ${theme.spacing[3]};
-  justify-content: flex-end;
-`
-
-const FrequencySection = styled.div`
-  margin-bottom: ${theme.spacing[6]};
-`
-
-const FrequencyTitle = styled.h3`
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[4]};
 `
 
 const FrequencyGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: ${theme.spacing[3]};
-`
-
-const FrequencyButton = styled.button<{ $selected: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[2]};
-  padding: ${theme.spacing[3]} ${theme.spacing[4]};
-  border: 2px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.gray[200]};
-  border-radius: ${theme.borderRadius.md};
-  background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.background};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  margin-top: ${theme.spacing[2]};
   
-  &:hover {
-    border-color: ${theme.colors.primary[400]};
-    background-color: ${theme.colors.primary[50]};
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: ${theme.spacing[2]};
   }
 `
 
-const FrequencyText = styled.span`
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.primary};
+const FrequencyButton = styled.button<{ selected: boolean }>`
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  border: 1px solid ${props => props.selected ? theme.colors.primary[300] : theme.colors.gray[200]};
+  background-color: ${props => props.selected ? theme.colors.primary[50] : 'transparent'};
+  color: ${props => props.selected ? theme.colors.primary[700] : theme.colors.text.secondary};
+  border-radius: ${theme.borderRadius.lg};
   font-size: ${theme.typography.fontSize.sm};
-`
-
-const CustomFrequencyGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: ${theme.spacing[2]};
-  margin-top: ${theme.spacing[3]};
-`
-
-const CustomFrequencyButton = styled.button<{ $selected: boolean }>`
-  padding: ${theme.spacing[2]} ${theme.spacing[3]};
-  border: 1px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.gray[200]};
-  border-radius: ${theme.borderRadius.sm};
-  background-color: ${({ $selected }) => $selected ? theme.colors.primary[50] : theme.colors.background};
+  font-weight: ${theme.typography.fontWeight.normal};
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.primary};
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[2]} ${theme.spacing[3]};
+    font-size: ${theme.typography.fontSize.xs};
+    min-height: 44px;
+  }
   
   &:hover {
     border-color: ${theme.colors.primary[400]};
-    background-color: ${theme.colors.primary[50]};
+    background-color: ${theme.colors.primary[25]};
+    color: ${theme.colors.primary[600]};
+  }
+`
+
+const CustomHabitInput = styled.div`
+  margin-top: ${theme.spacing[4]};
+  animation: zenFadeIn 0.3s ease-out;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing[3]};
+  }
+`
+
+const CreateButton = styled.button`
+  width: 100%;
+  background-color: ${theme.colors.primary[500]};
+  border: none;
+  color: white;
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${theme.typography.fontWeight.medium};
+  cursor: pointer;
+  padding: ${theme.spacing[4]};
+  border-radius: ${theme.borderRadius.lg};
+  transition: all ${theme.transitions.normal};
+  margin-top: ${theme.spacing[6]};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]};
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 52px;
+    margin-top: ${theme.spacing[4]};
+  }
+  
+  &:hover {
+    background-color: ${theme.colors.primary[600]};
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px ${theme.colors.primary[200]};
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    background-color: ${theme.colors.gray[200]};
+    color: ${theme.colors.text.disabled};
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`
+
+const CustomHabitButton = styled.button`
+  width: 100%;
+  background: none;
+  border: 1px solid ${theme.colors.gray[200]};
+  color: ${theme.colors.text.secondary};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.normal};
+  cursor: pointer;
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  border-radius: ${theme.borderRadius.lg};
+  transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[2]} ${theme.spacing[3]};
+    font-size: ${theme.typography.fontSize.xs};
+    min-height: 44px;
+  }
+  
+  &:hover {
+    border-color: ${theme.colors.primary[300]};
+    background-color: ${theme.colors.primary[25]};
+    color: ${theme.colors.primary[600]};
   }
 `
 
@@ -380,117 +556,98 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
           </CloseButton>
         </Header>
 
-        <CategoryGrid>
-          {categories.map((category) => {
-            const Icon = category.icon
-            return (
-              <CategoryButton
-                key={category.id}
-                $selected={selectedCategory === category.id}
-                onClick={() => handleCategorySelect(category.id)}
-              >
-                <CategoryIcon>
-                  <Icon size={24} />
-                </CategoryIcon>
-                <CategoryName>{category.name}</CategoryName>
-              </CategoryButton>
-            )
-          })}
-        </CategoryGrid>
+        <Form>
+          <Label>Select a category</Label>
+          <CategoryGrid>
+            {categories.map((category) => {
+              const Icon = category.icon
+              return (
+                <CategoryButton
+                  key={category.id}
+                  selected={selectedCategory === category.id}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleCategorySelect(category.id)
+                  }}
+                >
+                  <Icon size={24} style={{ marginBottom: 4, opacity: selectedCategory === category.id ? 1 : 0.5 }} />
+                  {category.name}
+                </CategoryButton>
+              )
+            })}
+          </CategoryGrid>
 
-        {selectedCategory && (
-          <>
-            <SuggestionsTitle>
-              Popular {categories.find(c => c.id === selectedCategory)?.name} Habits
-            </SuggestionsTitle>
-            
-            <SuggestionsGrid>
-              {suggestions[selectedCategory as keyof typeof suggestions]?.map((suggestion) => (
-                <SuggestionButton
-                  key={suggestion}
-                  $selected={selectedHabit === suggestion}
-                  onClick={() => handleSuggestionSelect(suggestion)}
-                >
-                  <SuggestionText $selected={selectedHabit === suggestion}>{suggestion}</SuggestionText>
-                </SuggestionButton>
-              ))}
-            </SuggestionsGrid>
-
-            {!showCustomInput ? (
-              <Button $variant="ghost" $fullWidth onClick={handleCustomHabit}>
-                + Add custom habit
-              </Button>
-            ) : (
-              <CustomHabitInput
-                type="text"
-                placeholder="Type your custom habit..."
-                value={customHabitText}
-                onChange={handleCustomHabitInput}
-                autoFocus
-              />
-            )}
-
-            <FrequencySection>
-              <FrequencyTitle>How often?</FrequencyTitle>
-              <FrequencyGrid>
-                <FrequencyButton
-                  $selected={selectedFrequency === 'daily'}
-                  onClick={() => handleFrequencySelect('daily')}
-                >
-                  <Clock size={16} />
-                  <FrequencyText>Daily</FrequencyText>
-                </FrequencyButton>
-                <FrequencyButton
-                  $selected={selectedFrequency === 'weekly'}
-                  onClick={() => handleFrequencySelect('weekly')}
-                >
-                  <Calendar size={16} />
-                  <FrequencyText>Weekly</FrequencyText>
-                </FrequencyButton>
-                <FrequencyButton
-                  $selected={selectedFrequency === 'monthly'}
-                  onClick={() => handleFrequencySelect('monthly')}
-                >
-                  <Calendar size={16} />
-                  <FrequencyText>Monthly</FrequencyText>
-                </FrequencyButton>
-                <FrequencyButton
-                  $selected={selectedFrequency === 'custom'}
-                  onClick={() => handleFrequencySelect('custom')}
-                >
-                  <Target size={16} />
-                  <FrequencyText>Custom</FrequencyText>
-                </FrequencyButton>
-              </FrequencyGrid>
-              
-              {selectedFrequency === 'custom' && (
-                <CustomFrequencyGrid>
-                  {customFrequencyOptions.map((option) => (
-                    <CustomFrequencyButton
-                      key={option}
-                      $selected={selectedCustomFrequency === option}
-                      onClick={() => handleCustomFrequencySelect(option)}
-                    >
-                      {option}
-                    </CustomFrequencyButton>
-                  ))}
-                </CustomFrequencyGrid>
+          {selectedCategory && (
+            <>
+              <SuggestionsTitle>
+                Popular {categories.find(c => c.id === selectedCategory)?.name} Habits
+              </SuggestionsTitle>
+              <SuggestionsGrid>
+                {suggestions[selectedCategory as keyof typeof suggestions]?.map((suggestion) => (
+                  <SuggestionButton
+                    key={suggestion}
+                    selected={selectedHabit === suggestion}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleSuggestionSelect(suggestion)
+                    }}
+                  >
+                    <SuggestionText selected={selectedHabit === suggestion}>{suggestion}</SuggestionText>
+                  </SuggestionButton>
+                ))}
+              </SuggestionsGrid>
+              {!showCustomInput ? (
+                <CustomHabitButton onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleCustomHabit()
+                }}>
+                  + Add custom habit
+                </CustomHabitButton>
+              ) : (
+                <CustomHabitInput>
+                  <Input
+                    type="text"
+                    placeholder="Type your custom habit..."
+                    value={customHabitText}
+                    onChange={handleCustomHabitInput}
+                    autoFocus
+                  />
+                </CustomHabitInput>
               )}
-            </FrequencySection>
-          </>
-        )}
+            </>
+          )}
 
-        <Actions>
-          <Button $variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave}
-            disabled={!selectedHabit || (selectedFrequency === 'custom' && !selectedCustomFrequency)}
-          >
-            {editingHabit ? 'Update Habit' : 'Create Habit'}
-          </Button>
-        </Actions>
+          <InputGroup>
+            <Label>Frequency</Label>
+            <Select value={selectedFrequency} onChange={(e) => handleFrequencySelect(e.target.value)}>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom</option>
+            </Select>
+          </InputGroup>
+
+          {selectedFrequency === 'custom' && (
+            <InputGroup>
+              <Label>Custom Frequency</Label>
+              <Select value={selectedCustomFrequency} onChange={(e) => handleCustomFrequencySelect(e.target.value)}>
+                {customFrequencyOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </Select>
+            </InputGroup>
+          )}
+        </Form>
+
+        <CreateButton 
+          onClick={handleSave}
+          disabled={!selectedHabit || (selectedFrequency === 'custom' && !selectedCustomFrequency)}
+        >
+          {editingHabit ? 'Update Habit' : 'Create Habit'}
+        </CreateButton>
       </Modal>
     </Overlay>
   )

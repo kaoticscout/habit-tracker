@@ -25,17 +25,27 @@ const Overlay = styled.div`
   padding: ${theme.spacing[4]};
   backdrop-filter: blur(2px);
   animation: zenOverlayFadeIn 0.3s ease-out;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]};
+  }
 `
 
 const Modal = styled.div`
   background-color: ${theme.colors.background};
   border-radius: ${theme.borderRadius.xl};
-  padding: ${theme.spacing[12]};
+  padding: ${theme.spacing[10]};
   max-width: 380px;
   width: 100%;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
   animation: zenSlideIn 0.4s ease-out;
   position: relative;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[8]};
+    max-width: 100%;
+    border-radius: ${theme.borderRadius.lg};
+  }
 `
 
 const CloseButton = styled.button`
@@ -49,6 +59,13 @@ const CloseButton = styled.button`
   padding: ${theme.spacing[2]};
   border-radius: ${theme.borderRadius.full};
   transition: all ${theme.transitions.normal};
+  min-height: 44px;
+  min-width: 44px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    top: ${theme.spacing[3]};
+    right: ${theme.spacing[3]};
+  }
   
   &:hover {
     color: ${theme.colors.text.secondary};
@@ -59,14 +76,23 @@ const CloseButton = styled.button`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing[8]};
+  gap: ${theme.spacing[6]};
   margin-top: ${theme.spacing[4]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[5]};
+    margin-top: ${theme.spacing[3]};
+  }
 `
 
 const InputGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing[3]};
+  gap: ${theme.spacing[2]};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing[1]};
+  }
 `
 
 const Label = styled.label`
@@ -74,6 +100,10 @@ const Label = styled.label`
   color: ${theme.colors.text.secondary};
   font-weight: ${theme.typography.fontWeight.normal};
   letter-spacing: 0.01em;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+  }
 `
 
 const Input = styled.input`
@@ -85,6 +115,13 @@ const Input = styled.input`
   color: ${theme.colors.text.primary};
   background-color: transparent;
   transition: all ${theme.transitions.normal};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]} ${theme.spacing[4]};
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 52px;
+  }
   
   &:focus {
     outline: none;
@@ -106,6 +143,11 @@ const ErrorMessage = styled.div`
   background-color: ${theme.colors.error}08;
   border-radius: ${theme.borderRadius.md};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+    padding: ${theme.spacing[2]};
+  }
 `
 
 const SuccessMessage = styled.div`
@@ -116,6 +158,11 @@ const SuccessMessage = styled.div`
   background-color: ${theme.colors.success}08;
   border-radius: ${theme.borderRadius.md};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+    padding: ${theme.spacing[2]};
+  }
 `
 
 const SignUpButton = styled.button`
@@ -129,7 +176,15 @@ const SignUpButton = styled.button`
   padding: ${theme.spacing[4]};
   border-radius: ${theme.borderRadius.lg};
   transition: all ${theme.transitions.normal};
-  margin-top: ${theme.spacing[6]};
+  margin-top: ${theme.spacing[4]};
+  min-height: 48px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]};
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 52px;
+    margin-top: ${theme.spacing[3]};
+  }
   
   &:hover {
     background-color: ${theme.colors.primary[600]};
@@ -153,10 +208,15 @@ const SignUpButton = styled.button`
 const Divider = styled.div`
   display: flex;
   align-items: center;
-  margin: ${theme.spacing[8]} 0;
+  margin: ${theme.spacing[6]} 0;
   color: ${theme.colors.text.disabled};
   font-size: ${theme.typography.fontSize.sm};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin: ${theme.spacing[4]} 0;
+    font-size: ${theme.typography.fontSize.xs};
+  }
   
   &::before,
   &::after {
@@ -180,6 +240,10 @@ const SwitchPrompt = styled.div`
   color: ${theme.colors.text.secondary};
   font-size: ${theme.typography.fontSize.sm};
   font-weight: ${theme.typography.fontWeight.normal};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.typography.fontSize.xs};
+  }
 `
 
 const SwitchLink = styled.button`
@@ -190,6 +254,8 @@ const SwitchLink = styled.button`
   font-weight: ${theme.typography.fontWeight.medium};
   margin-left: ${theme.spacing[1]};
   transition: color ${theme.transitions.fast};
+  min-height: 44px;
+  min-width: 44px;
   
   &:hover {
     color: ${theme.colors.primary[700]};

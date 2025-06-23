@@ -8,6 +8,11 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
+export const htmlAttributes = {
+  lang: 'en',
+  className: `no-fouc ${inter.variable}`,
+}
+
 export const metadata: Metadata = {
   title: 'Zen Habit Tracker - Peaceful & Mindful',
   description: 'A zen-inspired, minimalist habit tracking application to help you build better habits with peace and mindfulness.',
@@ -32,24 +37,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html {...htmlAttributes}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Zen Habit Tracker" />
-        {/* Immediate no-flash script */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                document.documentElement.style.visibility = 'hidden';
-                document.documentElement.style.opacity = '0';
-              })();
-            `,
-          }}
-        />
+        {/* FOUC prevention CSS */}
+        <style>{`
+          html.no-fouc { opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out; }
+          html { transition: opacity 0.3s ease-in-out; }
+        `}</style>
       </head>
       <body className={inter.className}>
         <Providers>
@@ -60,25 +59,19 @@ export default function RootLayout({
             {children}
           </main>
         </Providers>
-        {/* Show content after everything loads */}
+        {/* Remove no-fouc class after DOM is ready */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 function showContent() {
-                  document.documentElement.style.visibility = 'visible';
-                  document.documentElement.style.opacity = '1';
-                  document.documentElement.style.transition = 'opacity 0.3s ease-in-out';
+                  document.documentElement.classList.remove('no-fouc');
                 }
-                
-                // Show content when DOM is ready
                 if (document.readyState === 'loading') {
                   document.addEventListener('DOMContentLoaded', showContent);
                 } else {
                   showContent();
                 }
-                
-                // Fallback: show content after a short delay
                 setTimeout(showContent, 100);
               })();
             `,

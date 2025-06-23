@@ -1,7 +1,8 @@
 export const theme = {
   colors: {
-    // Zen-inspired color palette - soft, calming, natural
+    // Zen-inspired color palette - even softer, more calming, natural
     primary: {
+      25: '#f8fcff',
       50: '#f0f9ff',
       100: '#e0f2fe',
       200: '#bae6fd',
@@ -13,8 +14,9 @@ export const theme = {
       800: '#075985',
       900: '#0c4a6e',
     },
-    // Soft, warm grays inspired by natural materials
+    // Softer, warmer grays inspired by natural materials
     gray: {
+      25: '#fcfcfc',
       50: '#fafafa',
       100: '#f5f5f5',
       200: '#e5e5e5',
@@ -30,14 +32,15 @@ export const theme = {
     success: '#059669',
     warning: '#d97706',
     error: '#dc2626',
-    // Zen background colors - warm whites and soft creams
+    // Zen background colors - even warmer whites and soft creams
     background: '#fefefe',
     surface: '#fafafa',
-    // Soft, readable text colors
+    // Softer, more readable text colors
     text: {
       primary: '#1c1917',
       secondary: '#57534e',
       disabled: '#a8a29e',
+      muted: '#78716c',
     },
   },
   typography: {
@@ -57,6 +60,7 @@ export const theme = {
       '5xl': '3rem',
     },
     fontWeight: {
+      light: 300,
       normal: 400,
       medium: 500,
       semibold: 600,
@@ -64,8 +68,9 @@ export const theme = {
     },
     lineHeight: {
       tight: 1.25,
-      normal: 1.5,
-      relaxed: 1.75,
+      normal: 1.6,
+      relaxed: 1.8,
+      loose: 2,
     },
   },
   spacing: {
@@ -98,26 +103,52 @@ export const theme = {
     '2xl': '1rem',
     full: '9999px',
   },
-  // Zen-like shadows - very subtle and soft
+  // Zen-like shadows - even more subtle and soft
   shadows: {
+    xs: '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
     sm: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
-    base: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
-    md: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
+    base: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02)',
+    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.04), 0 10px 10px -5px rgba(0, 0, 0, 0.01)',
   },
   breakpoints: {
+    xs: '480px',
     sm: '640px',
     md: '768px',
     lg: '1024px',
     xl: '1280px',
     '2xl': '1536px',
   },
-  // Zen-like transitions - smooth and gentle
+  // Zen-like transitions - even smoother and gentler
   transitions: {
     fast: '200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    normal: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
-    slow: '500ms cubic-bezier(0.4, 0, 0.2, 1)',
+    normal: '400ms cubic-bezier(0.4, 0, 0.2, 1)',
+    slow: '600ms cubic-bezier(0.4, 0, 0.2, 1)',
+    zen: '800ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  },
+  // Responsive spacing for mobile-first design
+  responsiveSpacing: {
+    xs: {
+      padding: '1rem',
+      gap: '0.75rem',
+      margin: '1rem',
+    },
+    sm: {
+      padding: '1.5rem',
+      gap: '1rem',
+      margin: '1.5rem',
+    },
+    md: {
+      padding: '2rem',
+      gap: '1.5rem',
+      margin: '2rem',
+    },
+    lg: {
+      padding: '3rem',
+      gap: '2rem',
+      margin: '3rem',
+    },
   },
 } as const
 
