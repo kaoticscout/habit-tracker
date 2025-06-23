@@ -183,7 +183,15 @@ export function useHabits() {
 
   // Toggle habit completion
   const toggleHabit = async (habitId: string) => {
+    console.log('toggleHabit called with:', { 
+      habitId, 
+      hasSession: !!session?.user, 
+      sessionUser: session?.user,
+      sessionStatus: status
+    })
+    
     if (!session?.user) {
+      console.log('No session, using local storage logic')
       // For non-authenticated users, use local state logic
       const updatedHabits = habits.map(habit => {
         if (habit.id === habitId) {
@@ -219,19 +227,35 @@ export function useHabits() {
       return
     }
 
+    console.log('Session exists, making API call')
     setLoading(true)
     setError(null)
 
     try {
+      console.log('Making fetch request to:', `/api/habits/${habitId}/toggle`)
+      console.log('Session user:', session?.user)
       const response = await fetch(`/api/habits/${habitId}/toggle`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin', // Ensure cookies are sent
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
-        throw new Error('Failed to toggle habit')
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
+        if (response.status === 401) {
+          throw new Error('Please sign in to save your progress')
+        }
+        throw new Error(`Failed to toggle habit: ${response.status}`)
       }
 
       const result = await response.json()
+      console.log('API success response:', result)
       
       // Update local state
       setHabits(prev => prev.map(habit => {

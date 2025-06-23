@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/db'
+import { authOptions } from '@/lib/auth'
 
 interface RouteParams {
   params: {
@@ -10,7 +11,7 @@ interface RouteParams {
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -79,5 +80,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Error toggling habit:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
- 
+} 
