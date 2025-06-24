@@ -52,6 +52,16 @@ async function testDailyReset() {
   console.log('=====================================')
   console.log(`Base URL: ${BASE_URL}`)
   console.log(`Using CRON_SECRET: ${CRON_SECRET ? 'Yes' : 'No'}`)
+  
+  // Show current day info
+  const now = new Date()
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const currentDay = dayNames[now.getDay()]
+  const isMonday = now.getDay() === 1
+  
+  console.log(`Current day: ${currentDay} (${now.getDay()})`)
+  console.log(`Is start of week (Monday): ${isMonday}`)
+  console.log(`Weekly habits will be ${isMonday ? 'PROCESSED' : 'SKIPPED'} today`)
   console.log('')
 
   try {
@@ -69,6 +79,7 @@ async function testDailyReset() {
       console.log(`📊 Summary:`)
       console.log(`   - Total habits: ${resetResult.data.summary.totalHabits}`)
       console.log(`   - Processed: ${resetResult.data.summary.processedHabits}`)
+      console.log(`   - Weekly habits skipped: ${resetResult.data.summary.weeklyHabitsSkipped}`)
       console.log(`   - Streaks updated: ${resetResult.data.summary.streaksUpdated}`)
       console.log(`   - New logs created: ${resetResult.data.summary.logsCreated}`)
       console.log(`   - Errors: ${resetResult.data.summary.errorCount}`)
@@ -87,11 +98,14 @@ async function testDailyReset() {
         console.log('📝 Details:')
         resetResult.data.details.forEach((detail, index) => {
           console.log(`   ${index + 1}. ${detail.habitName} (${detail.userEmail}):`)
-          console.log(`      - Action: ${detail.action}`)
           console.log(`      - Frequency: ${detail.frequency}`)
+          console.log(`      - Action: ${detail.action}`)
           if (detail.action === 'reset') {
-            console.log(`      - Completed yesterday: ${detail.wasCompletedYesterday}`)
-            console.log(`      - New streak: ${detail.newStreak}`)
+            console.log(`      - Period type: ${detail.periodType}`)
+            console.log(`      - Completed in ${detail.periodType}: ${detail.wasCompletedInPeriod}`)
+            console.log(`      - Is weekly habit: ${detail.isWeeklyHabit}`)
+          } else if (detail.action === 'skipped_weekly') {
+            console.log(`      - Reason: ${detail.reason}`)
           }
         })
       }
