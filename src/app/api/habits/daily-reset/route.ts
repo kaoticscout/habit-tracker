@@ -15,25 +15,25 @@ export async function POST(req: NextRequest) {
     }
 
     const results = await executeQuery(async (prisma) => {
-      // Get current date (start of day)
-      const today = new Date()
+      // Get current date info
+      const now = new Date()
+      const today = new Date(now)
       today.setHours(0, 0, 0, 0)
       
-      // Get yesterday's date
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
       
-      // Check if today is Monday (start of new week, end of previous week)
-      const isStartOfWeek = today.getDay() === 1 // Monday = 1
+      // Check if today is Monday (end of week for weekly habits)
+      const isMonday = today.getDay() === 1 // Monday = 1
       
       console.log('📅 Processing reset for:', {
         today: today.toISOString(),
-        yesterday: yesterday.toISOString(),
-        isStartOfWeek,
-        dayOfWeek: today.getDay()
+        tomorrow: tomorrow.toISOString(),
+        isMonday,
+        dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()]
       })
 
-      // Get all active habits with their logs - using raw query to avoid schema conflicts
+      // Get all active habits with their users - using raw query to avoid schema conflicts
       const allHabitsRaw = await prisma.$queryRaw`
         SELECT 
           h.id,
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         FROM habits h
         JOIN users u ON h."userId" = u.id
         WHERE h."isActive" = true
+        ORDER BY h."createdAt" ASC
       ` as Array<{
         id: string
         title: string
@@ -79,8 +80,8 @@ export async function POST(req: NextRequest) {
           
           const isWeeklyHabit = habit.frequency.toLowerCase() === 'weekly'
           
-          // For weekly habits, only process on Monday (start of new week)
-          if (isWeeklyHabit && !isStartOfWeek) {
+          // For weekly habits, only process on Monday (end of week evaluation)
+          if (isWeeklyHabit && !isMonday) {
             weeklyHabitsSkipped++
             details.push({
               habitId: habit.id,
@@ -88,114 +89,15 @@ export async function POST(req: NextRequest) {
               userEmail: habit.user.email,
               frequency: habit.frequency,
               action: 'skipped_weekly',
-              reason: 'Weekly habit - not start of week'
+              reason: 'Weekly habit - not Monday (end of week)'
             })
             continue
           }
 
-          // Check if habit should be tracked today based on frequency
-          const shouldTrackToday = shouldHabitBeTrackedToday(habit.frequency, today, habit.createdAt)
-          
-          if (!shouldTrackToday) {
-            details.push({
-              habitId: habit.id,
-              habitName: habit.title,
-              userEmail: habit.user.email,
-              frequency: habit.frequency,
-              action: 'skipped',
-              reason: 'Not scheduled for today'
-            })
-            continue
-          }
-
-          // Get logs for this habit in the relevant time period
-          const logs = await prisma.habitLog.findMany({
-            where: {
-              habitId: habit.id,
-              date: {
-                gte: yesterday,
-                lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Include today
-              }
-            }
-          })
-
-          // For weekly habits, check the entire previous week for completion
-          let wasCompletedInPeriod = false
-          
-          if (isWeeklyHabit) {
-            // Check if completed any time in the previous week (Monday to Sunday)
-            const lastWeekStart = new Date(today)
-            lastWeekStart.setDate(lastWeekStart.getDate() - 7) // Go back 7 days to last Monday
-            
-            const lastWeekEnd = new Date(yesterday)
-            lastWeekEnd.setHours(23, 59, 59, 999) // End of Sunday
-            
-            const weeklyLogs = await prisma.habitLog.findMany({
-              where: {
-                habitId: habit.id,
-                date: {
-                  gte: lastWeekStart,
-                  lte: lastWeekEnd
-                },
-                completed: true
-              }
-            })
-            
-            wasCompletedInPeriod = weeklyLogs.length > 0
-            
-            console.log(`📅 Weekly habit ${habit.title}: checked period ${lastWeekStart.toISOString()} to ${lastWeekEnd.toISOString()}, completed: ${wasCompletedInPeriod}`)
-          } else {
-            // For daily habits, check yesterday
-            const yesterdayLog = logs.find(log => {
-              const logDate = new Date(log.date)
-              logDate.setHours(0, 0, 0, 0)
-              return logDate.getTime() === yesterday.getTime()
-            })
-            wasCompletedInPeriod = yesterdayLog?.completed || false
-          }
-
-          // Find today's log (if it exists)
-          const todayLog = logs.find(log => {
-            const logDate = new Date(log.date)
-            logDate.setHours(0, 0, 0, 0)
-            return logDate.getTime() === today.getTime()
-          })
-
-          // Create or update today's log entry (reset to incomplete)
-          // This is the core functionality: reset all habits to unchecked for the new day
-          let logAction = ''
-          
-          if (todayLog) {
-            // Update existing log to incomplete (reset the checked status)
-            await prisma.habitLog.update({
-              where: { id: todayLog.id },
-              data: { 
-                completed: false,
-                updatedAt: new Date()
-              }
-            })
-            logAction = todayLog.completed ? 'reset_to_incomplete' : 'already_incomplete'
-          } else {
-            // Create new log entry for today (starts as incomplete/unchecked)
-            await prisma.habitLog.create({
-              data: {
-                habitId: habit.id,
-                userId: habit.userId,
-                date: today,
-                completed: false
-              }
-            })
-            logsCreated++
-            logAction = 'created_incomplete'
-          }
-
-          // Calculate and update streaks based on completion
-          let newStreak = 0
-          let newBestStreak = 0
+          // Get current streak values (may not exist in production DB yet)
           let oldStreak = 0
           let oldBestStreak = 0
           
-          // Try to get current streak values (they might not exist in production DB yet)
           try {
             const currentHabit = await prisma.$queryRaw`
               SELECT 
@@ -210,34 +112,126 @@ export async function POST(req: NextRequest) {
               oldBestStreak = currentHabit[0].best_streak || 0
             }
           } catch (error) {
-            // Columns don't exist in production yet, use defaults
             console.log(`⚠️ Streak columns not available for habit ${habit.title}, using defaults`)
           }
+
+          // Check completion status for the period we're evaluating
+          let wasCompletedInPeriod = false
+          let periodDescription = ''
+          
+          if (isWeeklyHabit) {
+            // For weekly habits on Monday: check if completed any time THIS WEEK (Monday to Sunday)
+            const thisWeekStart = new Date(today)
+            thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay() + 1) // This Monday
+            
+            const thisWeekEnd = new Date(today)
+            thisWeekEnd.setHours(23, 59, 59, 999) // End of today (Monday)
+            
+            // Actually, we want to check the PREVIOUS week since we're evaluating at the END of a week period
+            const lastWeekStart = new Date(thisWeekStart)
+            lastWeekStart.setDate(lastWeekStart.getDate() - 7) // Previous Monday
+            
+            const lastWeekEnd = new Date(thisWeekStart)
+            lastWeekEnd.setDate(lastWeekEnd.getDate() - 1) // Previous Sunday
+            lastWeekEnd.setHours(23, 59, 59, 999)
+            
+            const weeklyLogs = await prisma.habitLog.findMany({
+              where: {
+                habitId: habit.id,
+                date: {
+                  gte: lastWeekStart,
+                  lte: lastWeekEnd
+                },
+                completed: true
+              }
+            })
+            
+            wasCompletedInPeriod = weeklyLogs.length > 0
+            periodDescription = `week ${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`
+            
+            console.log(`📅 Weekly habit ${habit.title}: checked ${periodDescription}, found ${weeklyLogs.length} completed logs, completed: ${wasCompletedInPeriod}`)
+          } else {
+            // For daily habits: check if completed TODAY
+            const todayLog = await prisma.habitLog.findFirst({
+              where: {
+                habitId: habit.id,
+                date: {
+                  gte: today,
+                  lt: tomorrow
+                }
+              }
+            })
+            
+            wasCompletedInPeriod = todayLog?.completed || false
+            periodDescription = `today ${today.toISOString().split('T')[0]}`
+            
+            console.log(`📅 Daily habit ${habit.title}: checked ${periodDescription}, log exists: ${!!todayLog}, completed: ${wasCompletedInPeriod}`)
+          }
+
+          // Calculate new streak values based on completion
+          let newStreak = 0
+          let newBestStreak = oldBestStreak
+          let streakAction = ''
           
           if (wasCompletedInPeriod) {
-            // Habit was completed - increment or maintain streak
+            // Habit was completed - increment streak
             newStreak = oldStreak + 1
             newBestStreak = Math.max(oldBestStreak, newStreak)
+            streakAction = 'streak_incremented'
             streaksUpdated++
           } else {
             // Habit was not completed - reset streak to 0
             newStreak = 0
             newBestStreak = oldBestStreak // Keep best streak
+            streakAction = 'streak_reset'
           }
           
-          // Try to update streak values in database (only if columns exist)
+          // Update streak values in database (only if columns exist)
           try {
             await prisma.$executeRaw`
               UPDATE habits 
-              SET "currentStreak" = ${newStreak}, "bestStreak" = ${newBestStreak}
+              SET "currentStreak" = ${newStreak}, "bestStreak" = ${newBestStreak}, "updatedAt" = CURRENT_TIMESTAMP
               WHERE id = ${habit.id}
             `
-            console.log(`📊 Updated streaks for ${habit.title}: ${oldStreak} → ${newStreak} (best: ${newBestStreak})`)
+            console.log(`📊 Updated streaks for ${habit.title}: ${oldStreak} → ${newStreak} (best: ${oldBestStreak} → ${newBestStreak})`)
           } catch (error) {
             console.log(`⚠️ Could not update streak columns for ${habit.title} (columns may not exist in production)`)
           }
 
-          console.log(`📝 Habit ${habit.title}: ${logAction}, was completed in ${isWeeklyHabit ? 'week' : 'day'}: ${wasCompletedInPeriod}, streak: ${oldStreak} → ${newStreak}`)
+          // For daily habits only: Create tomorrow's log entry (starts as incomplete)
+          // Weekly habits don't need daily log creation
+          let logAction = 'no_log_action'
+          
+          if (!isWeeklyHabit) {
+            // Check if tomorrow's log already exists
+            const tomorrowLog = await prisma.habitLog.findFirst({
+              where: {
+                habitId: habit.id,
+                date: {
+                  gte: tomorrow,
+                  lt: new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000)
+                }
+              }
+            })
+            
+            if (!tomorrowLog) {
+              // Create tomorrow's log entry (starts as incomplete/unchecked)
+              await prisma.habitLog.create({
+                data: {
+                  habitId: habit.id,
+                  userId: habit.userId,
+                  date: tomorrow,
+                  completed: false
+                }
+              })
+              logsCreated++
+              logAction = 'created_tomorrow_log'
+            } else {
+              logAction = 'tomorrow_log_exists'
+            }
+          }
+
+          console.log(`📝 Habit ${habit.title}: ${streakAction} based on ${periodDescription}, ${logAction}`)
 
           processedHabits++
 
@@ -246,23 +240,32 @@ export async function POST(req: NextRequest) {
             habitName: habit.title,
             userEmail: habit.user.email,
             frequency: habit.frequency,
-            action: 'reset',
+            action: streakAction,
             isWeeklyHabit,
             wasCompletedInPeriod,
-            periodType: isWeeklyHabit ? 'week' : 'day',
+            periodChecked: periodDescription,
             logAction,
-            todayLogExists: !!todayLog,
-            todayLogWasCompleted: todayLog?.completed || false,
             oldStreak,
             newStreak,
             oldBestStreak,
             newBestStreak,
+            streakChange: newStreak - oldStreak,
+            bestStreakChanged: newBestStreak > oldBestStreak
           })
 
         } catch (error) {
           const errorMsg = `Error processing habit ${habitRaw.id} (${habitRaw.title}): ${error instanceof Error ? error.message : 'Unknown error'}`
           errors.push(errorMsg)
           console.error('💥', errorMsg)
+          
+          details.push({
+            habitId: habitRaw.id,
+            habitName: habitRaw.title,
+            userEmail: habitRaw.user_email,
+            frequency: habitRaw.frequency,
+            action: 'error',
+            error: errorMsg
+          })
         }
       }
 
@@ -322,7 +325,7 @@ function shouldHabitBeTrackedToday(frequency: string, date: Date, createdAt: Dat
       return true
     
     case 'weekly':
-      // Weekly habits are tracked on Mondays (start of new week)
+      // Weekly habits are evaluated on Mondays (end of week)
       return dayOfWeek === 1
     
     case 'monthly':
