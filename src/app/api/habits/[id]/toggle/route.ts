@@ -51,10 +51,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     console.log(`📋 [TOGGLE] Found habit: ${habit.title}`)
 
-    // Get today's date (start of day)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    console.log(`📅 [TOGGLE] Today: ${today.toISOString()}`)
+    // Get today's date (start of day) - ensure consistent timezone handling
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    console.log(`📅 [TOGGLE] Current time: ${now.toISOString()}`)
+    console.log(`📅 [TOGGLE] Today (start of day): ${today.toISOString()}`)
 
     // Check if there's already a log for today
     const existingLog = await prisma.habitLog.findUnique({

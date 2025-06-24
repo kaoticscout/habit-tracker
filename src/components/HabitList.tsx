@@ -396,6 +396,12 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
   }, [transform, transition, isDragging])
 
   const { completed, streak } = useMemo(() => {
+    console.log(`🔄 [MEMO] Calculating status for ${habit.title}`, {
+      logsCount: habit.logs.length,
+      frequency: habit.frequency,
+      currentStreak: habit.currentStreak
+    })
+    
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
@@ -469,6 +475,16 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
         }
       }
     }
+    
+    console.log(`✅ [MEMO] Result for ${habit.title}:`, {
+      completed: isCompletedToday,
+      streak,
+      todayLogs: habit.logs.filter(log => {
+        const logDate = new Date(log.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === today.getTime()
+      }).map(log => ({ date: log.date, completed: log.completed }))
+    })
     
     return {
       completed: isCompletedToday,
