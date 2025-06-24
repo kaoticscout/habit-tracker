@@ -376,16 +376,19 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
       completed: log.completed
     })))
     
-    // Check if completed today with more robust date comparison
+    // Find today's log regardless of completion status
     const todayLog = habit.logs.find(log => {
       const logDate = new Date(log.date)
       logDate.setHours(0, 0, 0, 0)
       const isToday = logDate.getTime() === today.getTime()
       console.log(`Comparing log date ${logDate.toISOString()} with today ${today.toISOString()}: ${isToday}, completed: ${log.completed}`)
-      return isToday && log.completed
+      return isToday  // Find today's log regardless of completion
     })
     
-    console.log('Today log found:', !!todayLog)
+    // Check if today's log is completed
+    const isCompletedToday = todayLog ? todayLog.completed : false
+    
+    console.log('Today log found:', !!todayLog, 'Completed:', isCompletedToday)
     
     // Calculate streak
     let streak = 0
@@ -399,18 +402,18 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
       currentDate.setHours(0, 0, 0, 0)
       
       // If today is completed, start streak from today
-      if (todayLog) {
+      if (isCompletedToday) {
         currentDate = new Date(today)
         streak = 1
       }
       
       // Count consecutive days backwards
-      for (let i = todayLog ? 1 : 0; i < sortedLogs.length; i++) {
+      for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
         const logDate = new Date(sortedLogs[i].date)
         logDate.setHours(0, 0, 0, 0)
         
         const expectedDate = new Date(currentDate)
-        expectedDate.setDate(expectedDate.getDate() - (todayLog ? i : i + 1))
+        expectedDate.setDate(expectedDate.getDate() - (isCompletedToday ? i : i + 1))
         
         if (logDate.getTime() === expectedDate.getTime()) {
           streak++
@@ -421,7 +424,7 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
     }
     
     const result = {
-      completed: !!todayLog,
+      completed: isCompletedToday,
       streak
     }
     
