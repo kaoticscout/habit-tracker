@@ -671,7 +671,7 @@ const sampleHabits = [
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
-  const { habits, loading, error, createHabit, toggleHabit, deleteHabit, createSampleHabits, migrateLocalStorageToDatabase } = useHabits()
+  const { habits, loading, error, createHabit, toggleHabit, deleteHabit, createSampleHabits, migrateLocalStorageToDatabase, refetch } = useHabits()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<any>(null)
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
@@ -729,11 +729,13 @@ export default function DashboardPage() {
       if (response.ok && data.success) {
         setTestResult({
           success: true,
-          message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs.`
+          message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs. Check your habits below - they should now be unchecked.`
         })
         
-        // Refresh habits to show updated state
-        window.location.reload()
+        // Small delay to let user see the success message, then refresh habits
+        setTimeout(async () => {
+          await refetch()
+        }, 1000)
       } else {
         setTestResult({
           error: true,
@@ -751,7 +753,7 @@ export default function DashboardPage() {
   }
 
   const handleRefreshHabits = () => {
-    window.location.reload()
+    refetch()
   }
 
   const handleCreateHabit = () => {
