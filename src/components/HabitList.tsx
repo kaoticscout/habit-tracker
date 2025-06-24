@@ -399,15 +399,36 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Find today's log regardless of completion status
-    const todayLog = habit.logs.find(log => {
-      const logDate = new Date(log.date)
-      logDate.setHours(0, 0, 0, 0)
-      return logDate.getTime() === today.getTime()
-    })
+    let isCompletedToday = false
     
-    // Check if today's log is completed
-    const isCompletedToday = todayLog ? todayLog.completed : false
+    // Handle different frequencies differently
+    if (habit.frequency.toLowerCase() === 'weekly') {
+      // For weekly habits, check if completed any time this week
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay() + 1) // Monday of this week
+      startOfWeek.setHours(0, 0, 0, 0)
+      
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 6) // Sunday of this week
+      endOfWeek.setHours(23, 59, 59, 999)
+      
+      // Check if there's any completed log this week
+      const thisWeekLogs = habit.logs.filter(log => {
+        const logDate = new Date(log.date)
+        return logDate >= startOfWeek && logDate <= endOfWeek && log.completed
+      })
+      
+      isCompletedToday = thisWeekLogs.length > 0
+    } else {
+      // For daily habits, check today's specific log
+      const todayLog = habit.logs.find(log => {
+        const logDate = new Date(log.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === today.getTime()
+      })
+      
+      isCompletedToday = todayLog ? todayLog.completed : false
+    }
     
     // Use stored currentStreak if available, otherwise calculate
     let streak: number
@@ -453,7 +474,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       completed: isCompletedToday,
       streak
     }
-  }, [habit.logs, habit.currentStreak])
+  }, [habit.logs, habit.currentStreak, habit.frequency])
 
   return (
     <HabitItem 

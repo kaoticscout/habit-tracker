@@ -189,12 +189,57 @@ export async function POST(req: NextRequest) {
             logAction = 'created_incomplete'
           }
 
-          console.log(`📝 Habit ${habit.title}: ${logAction}, was completed in ${isWeeklyHabit ? 'week' : 'day'}: ${wasCompletedInPeriod}`)
+          // Calculate and update streaks based on completion
+          let newStreak = 0
+          let newBestStreak = 0
+          let oldStreak = 0
+          let oldBestStreak = 0
+          
+          // Try to get current streak values (they might not exist in production DB yet)
+          try {
+            const currentHabit = await prisma.$queryRaw`
+              SELECT 
+                COALESCE("currentStreak", 0) as current_streak,
+                COALESCE("bestStreak", 0) as best_streak
+              FROM habits 
+              WHERE id = ${habit.id}
+            ` as Array<{ current_streak: number, best_streak: number }>
+            
+            if (currentHabit.length > 0) {
+              oldStreak = currentHabit[0].current_streak || 0
+              oldBestStreak = currentHabit[0].best_streak || 0
+            }
+          } catch (error) {
+            // Columns don't exist in production yet, use defaults
+            console.log(`⚠️ Streak columns not available for habit ${habit.title}, using defaults`)
+          }
+          
+          if (wasCompletedInPeriod) {
+            // Habit was completed - increment or maintain streak
+            newStreak = oldStreak + 1
+            newBestStreak = Math.max(oldBestStreak, newStreak)
+            streaksUpdated++
+          } else {
+            // Habit was not completed - reset streak to 0
+            newStreak = 0
+            newBestStreak = oldBestStreak // Keep best streak
+          }
+          
+          // Try to update streak values in database (only if columns exist)
+          try {
+            await prisma.$executeRaw`
+              UPDATE habits 
+              SET "currentStreak" = ${newStreak}, "bestStreak" = ${newBestStreak}
+              WHERE id = ${habit.id}
+            `
+            console.log(`📊 Updated streaks for ${habit.title}: ${oldStreak} → ${newStreak} (best: ${newBestStreak})`)
+          } catch (error) {
+            console.log(`⚠️ Could not update streak columns for ${habit.title} (columns may not exist in production)`)
+          }
+
+          console.log(`📝 Habit ${habit.title}: ${logAction}, was completed in ${isWeeklyHabit ? 'week' : 'day'}: ${wasCompletedInPeriod}, streak: ${oldStreak} → ${newStreak}`)
 
           processedHabits++
-          if (wasCompletedInPeriod) {
-            streaksUpdated++
-          }
 
           details.push({
             habitId: habit.id,
@@ -208,11 +253,10 @@ export async function POST(req: NextRequest) {
             logAction,
             todayLogExists: !!todayLog,
             todayLogWasCompleted: todayLog?.completed || false,
-            // TODO: Uncomment when streak fields are available
-            // oldStreak: habit.currentStreak || 0,
-            // newStreak,
-            // oldBestStreak: habit.bestStreak || 0,
-            // newBestStreak,
+            oldStreak,
+            newStreak,
+            oldBestStreak,
+            newBestStreak,
           })
 
         } catch (error) {
