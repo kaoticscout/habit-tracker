@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
           orderBy: { date: 'desc' }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'asc' }
     })
     console.log('✅ Habits fetched successfully:', { count: habits.length })
 

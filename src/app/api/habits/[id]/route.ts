@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     const body = await req.json()
-    const { title, category, frequency } = body
+    const { title, category, frequency, order } = body
 
     const habit = await prisma.habit.findFirst({
       where: {
@@ -42,9 +42,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const updatedHabit = await prisma.habit.update({
       where: { id: params.id },
       data: {
-        title: title || habit.title,
-        category: category || habit.category,
-        frequency: frequency || habit.frequency
+        ...(title !== undefined && { title }),
+        ...(category !== undefined && { category }),
+        ...(frequency !== undefined && { frequency }),
+        ...(order !== undefined && { order }),
       },
       include: {
         logs: {

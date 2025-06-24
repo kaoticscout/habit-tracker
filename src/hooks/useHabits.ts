@@ -18,6 +18,7 @@ interface Habit {
   logs: HabitLog[]
   currentStreak?: number
   bestStreak?: number
+  order?: number
 }
 
 export function useHabits() {
@@ -301,7 +302,40 @@ export function useHabits() {
         throw new Error('Failed to fetch habits')
       }
       const data = await response.json()
-      setHabits(data)
+      const habitsWithStreaks = data.map((habit: any) => {
+        const streaks = calculateStreaks(habit)
+        return {
+          ...habit,
+          createdAt: new Date(habit.createdAt),
+          logs: habit.logs.map((log: any) => ({
+            ...log,
+            date: new Date(log.date)
+          })),
+          currentStreak: streaks.currentStreak,
+          bestStreak: streaks.bestStreak
+        }
+      })
+      
+      // Apply stored order from localStorage if available
+      const storedOrder = localStorage.getItem('habit-order')
+      if (storedOrder) {
+        try {
+          const orderMap = JSON.parse(storedOrder)
+          const orderLookup = new Map(orderMap.map((item: { id: string; order: number }) => [item.id, item.order]))
+          
+          habitsWithStreaks.sort((a: any, b: any) => {
+            const orderA = (orderLookup.get(a.id) as number) ?? 999
+            const orderB = (orderLookup.get(b.id) as number) ?? 999
+            return orderA - orderB
+          })
+          
+          console.log('✅ Applied stored habit order from localStorage')
+        } catch (error) {
+          console.error('❌ Error applying stored order:', error)
+        }
+      }
+      
+      setHabits(habitsWithStreaks)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch habits')
       console.error('Error fetching habits:', err)
@@ -697,43 +731,47 @@ export function useHabits() {
 
   // Refetch function that works for both authenticated and non-authenticated users
   const refetch = async () => {
-    if (session?.user) {
-      // Authenticated user - fetch from database
-      await fetchHabits()
-    } else {
-      // Non-authenticated user - reload from localStorage
-      const savedHabits = localStorage.getItem('routinely-habits')
-      if (savedHabits) {
-        try {
-          const parsed = JSON.parse(savedHabits)
-          // Convert date strings back to Date objects and ensure streak fields exist
-          const habitsWithDates = parsed.map((habit: any) => ({
-            ...habit,
-            createdAt: new Date(habit.createdAt),
-            logs: habit.logs.map((log: any) => ({
-              ...log,
-              date: new Date(log.date)
-            })),
-            currentStreak: habit.currentStreak || 0,
-            bestStreak: habit.bestStreak || 0
-          }))
-          setHabits(habitsWithDates)
-        } catch (err) {
-          console.error('Error parsing saved habits during refetch:', err)
-        }
+    await fetchHabits()
+  }
+
+  const reorderHabits = async (reorderedHabits: Habit[]) => {
+    try {
+      // Update local state immediately for instant feedback
+      setHabits(reorderedHabits)
+      
+      if (session?.user) {
+        // For authenticated users, store the order in localStorage as a fallback
+        // until database schema is updated with the order field
+        const habitOrder = reorderedHabits.map((habit, index) => ({
+          id: habit.id,
+          order: index
+        }))
+        localStorage.setItem('habit-order', JSON.stringify(habitOrder))
+        
+        console.log('✅ Habit order updated in localStorage for authenticated user')
+      } else {
+        // For non-authenticated users, update localStorage habits directly
+        localStorage.setItem('routinely-habits', JSON.stringify(reorderedHabits))
+        console.log('✅ Habit order updated in localStorage for guest user')
       }
+    } catch (error) {
+      console.error('❌ Error updating habit order:', error)
+      // Revert to original order on error
+      await fetchHabits()
     }
   }
 
   return {
     habits,
-    loading: loading || migrationInProgress,
+    loading,
     error,
+    migrationInProgress,
+    fetchHabits,
     createHabit,
     toggleHabit,
     deleteHabit,
     createSampleHabits,
-    migrateLocalStorageToDatabase,
-    refetch
+    refetch,
+    reorderHabits
   }
 } 

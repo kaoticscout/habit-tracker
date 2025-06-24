@@ -671,7 +671,17 @@ const sampleHabits = [
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
-  const { habits, loading, error, createHabit, toggleHabit, deleteHabit, createSampleHabits, migrateLocalStorageToDatabase, refetch } = useHabits()
+  const { 
+    habits, 
+    loading, 
+    error, 
+    createHabit, 
+    toggleHabit, 
+    deleteHabit, 
+    createSampleHabits, 
+    refetch,
+    reorderHabits 
+  } = useHabits()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<any>(null)
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
@@ -1006,6 +1016,7 @@ export default function DashboardPage() {
               onToggleHabit={handleToggleHabit}
               onEditHabit={handleEditHabit}
               onDeleteHabit={handleDeleteHabit}
+              onReorderHabits={reorderHabits}
             />
             <AddHabitButton>
               <ZenButton onClick={handleCreateHabit}>

@@ -9,14 +9,16 @@ export interface User {
 export interface Habit {
   id: string
   title: string
-  description?: string
-  frequency: 'daily' | 'weekly' | 'monthly'
-  target: number
-  color: string
+  category: string
+  frequency: string
   isActive: boolean
+  order?: number
+  currentStreak?: number
+  bestStreak?: number
   createdAt: Date
   updatedAt: Date
   userId: string
+  logs: HabitLog[]
 }
 
 export interface HabitLog {
