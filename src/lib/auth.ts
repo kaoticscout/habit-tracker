@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/db'
+import { executeQuery } from '@/lib/db'
 import type { User } from 'next-auth'
 
 // Ensure required environment variables are available
@@ -34,18 +34,19 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Don't manually connect/disconnect in serverless environments
-          // Prisma handles connections automatically
-          console.log('✅ Using Prisma client for database query')
+          // Use executeQuery to avoid prepared statement conflicts in serverless
+          console.log('✅ Using executeQuery for database access')
 
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              password: true
-            }
+          const user = await executeQuery(async (prisma) => {
+            return await prisma.user.findUnique({
+              where: { email: credentials.email },
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                password: true
+              }
+            })
           })
 
           console.log('👤 User lookup result:', { 
@@ -86,7 +87,6 @@ export const authOptions: NextAuthOptions = {
           console.error('💥 Auth error:', error)
           return null
         }
-        // Removed manual disconnect - let Prisma handle connections
       }
     })
   ],

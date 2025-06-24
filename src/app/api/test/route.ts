@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { executeQuery } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
       nextAuthUrl: process.env.NEXTAUTH_URL
     }
 
-    // Test database connection
-    const userCount = await prisma.user.count()
+    // Test database connection using executeQuery to avoid prepared statement conflicts
+    const userCount = await executeQuery(async (prisma) => {
+      return await prisma.user.count()
+    })
     
     return NextResponse.json({
       status: 'OK',
