@@ -22,20 +22,21 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials): Promise<User | null> {
-        console.log('Authorize called with:', { 
+        console.log('🔐 Authorize called with:', { 
           email: credentials?.email, 
-          hasPassword: !!credentials?.password 
+          hasPassword: !!credentials?.password,
+          timestamp: new Date().toISOString()
         })
 
         if (!credentials?.email || !credentials?.password) {
-          console.log('Missing credentials')
+          console.log('❌ Missing credentials')
           return null
         }
 
         try {
           // Ensure database connection
           await prisma.$connect()
-          console.log('Database connected successfully')
+          console.log('✅ Database connected successfully')
 
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
@@ -47,33 +48,42 @@ export const authOptions: NextAuthOptions = {
             }
           })
 
-          console.log('User found:', { 
+          console.log('👤 User lookup result:', { 
             exists: !!user, 
             email: user?.email,
-            hasPassword: !!user?.password 
+            hasPassword: !!user?.password,
+            userId: user?.id
           })
 
-          if (!user || !user.password) {
-            console.log('User not found or no password')
+          if (!user) {
+            console.log('❌ User not found in database')
             return null
           }
 
+          if (!user.password) {
+            console.log('❌ User has no password set')
+            return null
+          }
+
+          console.log('🔍 Comparing passwords...')
           const isValid = await bcrypt.compare(credentials.password, user.password)
-          console.log('Password valid:', isValid)
+          console.log('🔑 Password comparison result:', isValid)
           
           if (!isValid) {
-            console.log('Invalid password')
+            console.log('❌ Invalid password')
             return null
           }
 
-          console.log('Authentication successful for:', user.email)
-          return {
+          const userResult = {
             id: user.id,
             email: user.email,
             name: user.name || null
           }
+
+          console.log('✅ Authentication successful, returning user:', userResult)
+          return userResult
         } catch (error) {
-          console.error('Auth error:', error)
+          console.error('💥 Auth error:', error)
           return null
         } finally {
           await prisma.$disconnect()
@@ -85,16 +95,46 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      console.log('🎫 JWT callback called:', { 
+        hasUser: !!user, 
+        hasToken: !!token,
+        hasAccount: !!account,
+        tokenSub: token?.sub,
+        userEmail: user?.email
+      })
+      
       if (user) {
+        console.log('👤 Adding user to token:', { id: user.id, email: user.email })
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
       }
+      
+      console.log('🎫 JWT token result:', { 
+        id: token.id, 
+        email: token.email, 
+        sub: token.sub 
+      })
       return token
     },
     async session({ session, token }) {
+      console.log('📋 Session callback called:', { 
+        hasSession: !!session,
+        hasToken: !!token,
+        sessionUserEmail: session?.user?.email,
+        tokenId: token?.id
+      })
+      
       if (session.user && token) {
         session.user.id = token.id as string
+        console.log('📋 Session updated with user ID:', session.user.id)
       }
+      
+      console.log('📋 Final session:', {
+        userId: session?.user?.id,
+        userEmail: session?.user?.email
+      })
       return session
     },
   },
