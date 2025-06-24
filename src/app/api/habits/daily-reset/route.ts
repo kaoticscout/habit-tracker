@@ -136,38 +136,12 @@ export async function POST(req: NextRequest) {
             return logDate.getTime() === today.getTime()
           })
 
-          // TODO: Uncomment when Prisma client is updated with new schema
-          // Calculate new streak based on completion in the relevant period
-          // let newStreak = 0
-          // let newBestStreak = habit.bestStreak || 0
-          
-          // if (wasCompletedInPeriod) {
-          //   // Increment streak
-          //   newStreak = (habit.currentStreak || 0) + 1
-          //   // Update best streak if current streak is higher
-          //   if (newStreak > (habit.bestStreak || 0)) {
-          //     newBestStreak = newStreak
-          //   }
-          // } else {
-          //   // Reset streak to 0 if not completed in the period
-          //   newStreak = 0
-          // }
-
-          // TODO: Uncomment when Prisma client is updated
-          // // Update habit with new streak values
-          // await prisma.habit.update({
-          //   where: { id: habit.id },
-          //   data: {
-          //     currentStreak: newStreak,
-          //     bestStreak: newBestStreak,
-          //     updatedAt: new Date()
-          //   }
-          // })
-
           // Create or update today's log entry (reset to incomplete)
-          // Only create/update if this habit should be tracked today
+          // This is the core functionality: reset all habits to unchecked for the new day
+          let logAction = ''
+          
           if (todayLog) {
-            // Update existing log to incomplete
+            // Update existing log to incomplete (reset the checked status)
             await prisma.habitLog.update({
               where: { id: todayLog.id },
               data: { 
@@ -175,8 +149,9 @@ export async function POST(req: NextRequest) {
                 updatedAt: new Date()
               }
             })
+            logAction = todayLog.completed ? 'reset_to_incomplete' : 'already_incomplete'
           } else {
-            // Create new log entry for today (incomplete)
+            // Create new log entry for today (starts as incomplete/unchecked)
             await prisma.habitLog.create({
               data: {
                 habitId: habit.id,
@@ -186,7 +161,10 @@ export async function POST(req: NextRequest) {
               }
             })
             logsCreated++
+            logAction = 'created_incomplete'
           }
+
+          console.log(`📝 Habit ${habit.title}: ${logAction}, was completed in ${isWeeklyHabit ? 'week' : 'day'}: ${wasCompletedInPeriod}`)
 
           processedHabits++
           if (wasCompletedInPeriod) {
@@ -202,12 +180,14 @@ export async function POST(req: NextRequest) {
             isWeeklyHabit,
             wasCompletedInPeriod,
             periodType: isWeeklyHabit ? 'week' : 'day',
+            logAction,
+            todayLogExists: !!todayLog,
+            todayLogWasCompleted: todayLog?.completed || false,
             // TODO: Uncomment when streak fields are available
             // oldStreak: habit.currentStreak || 0,
             // newStreak,
             // oldBestStreak: habit.bestStreak || 0,
             // newBestStreak,
-            todayLogExists: !!todayLog
           })
 
         } catch (error) {
