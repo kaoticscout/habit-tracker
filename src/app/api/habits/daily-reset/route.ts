@@ -1,0 +1,282 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { executeQuery } from '@/lib/db'
+
+export async function POST(req: NextRequest) {
+  const startTime = Date.now()
+  
+  try {
+    console.log('🌅 Daily reset started at:', new Date().toISOString())
+    
+    // Verify this is a cron request (optional security check)
+    const authHeader = req.headers.get('authorization')
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.log('❌ Unauthorized cron request')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const results = await executeQuery(async (prisma) => {
+      // Get current date (start of day)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      // Get yesterday's date
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      
+      console.log('📅 Processing reset for:', {
+        today: today.toISOString(),
+        yesterday: yesterday.toISOString()
+      })
+
+      // Get all active habits with their logs
+      const allHabits = await prisma.habit.findMany({
+        where: { isActive: true },
+        include: {
+          logs: {
+            where: {
+              date: {
+                gte: yesterday,
+                lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Include today
+              }
+            }
+          },
+          user: {
+            select: { email: true }
+          }
+        }
+      })
+
+      console.log(`📊 Found ${allHabits.length} active habits to process`)
+
+      let processedHabits = 0
+      let streaksUpdated = 0
+      let logsCreated = 0
+      let errors: string[] = []
+      const details: any[] = []
+
+      // Process each habit
+      for (const habit of allHabits) {
+        try {
+          // Check if habit should be tracked today based on frequency
+          const shouldTrackToday = shouldHabitBeTrackedToday(habit.frequency, today, habit.createdAt)
+          
+          if (!shouldTrackToday) {
+            details.push({
+              habitId: habit.id,
+              habitName: habit.title,
+              userEmail: habit.user.email,
+              frequency: habit.frequency,
+              action: 'skipped',
+              reason: 'Not scheduled for today'
+            })
+            continue
+          }
+
+          // Find yesterday's log to check if habit was completed
+          const yesterdayLog = habit.logs.find(log => {
+            const logDate = new Date(log.date)
+            logDate.setHours(0, 0, 0, 0)
+            return logDate.getTime() === yesterday.getTime()
+          })
+
+          // Find today's log (if it exists)
+          const todayLog = habit.logs.find(log => {
+            const logDate = new Date(log.date)
+            logDate.setHours(0, 0, 0, 0)
+            return logDate.getTime() === today.getTime()
+          })
+
+          // Calculate new streak based on yesterday's completion
+          const wasCompletedYesterday = yesterdayLog?.completed || false
+          
+          // TODO: Uncomment when Prisma client is updated with new schema
+          // let newStreak = 0
+          // let newBestStreak = habit.bestStreak || 0
+          
+          // if (wasCompletedYesterday) {
+          //   // Increment streak
+          //   newStreak = (habit.currentStreak || 0) + 1
+          //   // Update best streak if current streak is higher
+          //   if (newStreak > (habit.bestStreak || 0)) {
+          //     newBestStreak = newStreak
+          //   }
+          // } else {
+          //   // Reset streak to 0 if not completed yesterday
+          //   newStreak = 0
+          // }
+
+          // TODO: Uncomment when Prisma client is updated
+          // // Update habit with new streak values
+          // await prisma.habit.update({
+          //   where: { id: habit.id },
+          //   data: {
+          //     currentStreak: newStreak,
+          //     bestStreak: newBestStreak,
+          //     updatedAt: new Date()
+          //   }
+          // })
+
+          // Create or update today's log entry (reset to incomplete)
+          if (todayLog) {
+            // Update existing log to incomplete
+            await prisma.habitLog.update({
+              where: { id: todayLog.id },
+              data: { 
+                completed: false,
+                updatedAt: new Date()
+              }
+            })
+          } else {
+            // Create new log entry for today (incomplete)
+            await prisma.habitLog.create({
+              data: {
+                habitId: habit.id,
+                userId: habit.userId,
+                date: today,
+                completed: false
+              }
+            })
+            logsCreated++
+          }
+
+          processedHabits++
+          if (wasCompletedYesterday) {
+            streaksUpdated++
+          }
+
+          details.push({
+            habitId: habit.id,
+            habitName: habit.title,
+            userEmail: habit.user.email,
+            frequency: habit.frequency,
+            action: 'reset',
+            wasCompletedYesterday,
+            // TODO: Uncomment when streak fields are available
+            // oldStreak: habit.currentStreak || 0,
+            // newStreak,
+            // oldBestStreak: habit.bestStreak || 0,
+            // newBestStreak,
+            todayLogExists: !!todayLog
+          })
+
+        } catch (error) {
+          const errorMsg = `Error processing habit ${habit.id} (${habit.title}): ${error instanceof Error ? error.message : 'Unknown error'}`
+          errors.push(errorMsg)
+          console.error('💥', errorMsg)
+        }
+      }
+
+      return {
+        processedHabits,
+        streaksUpdated,
+        logsCreated,
+        errors,
+        details,
+        totalHabits: allHabits.length
+      }
+    })
+
+    const executionTime = Date.now() - startTime
+
+    console.log('✅ Daily reset completed:', {
+      ...results,
+      executionTimeMs: executionTime
+    })
+
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      executionTimeMs: executionTime,
+      summary: {
+        totalHabits: results.totalHabits,
+        processedHabits: results.processedHabits,
+        streaksUpdated: results.streaksUpdated,
+        logsCreated: results.logsCreated,
+        errorCount: results.errors.length
+      },
+      details: results.details,
+      errors: results.errors
+    })
+
+  } catch (error) {
+    const executionTime = Date.now() - startTime
+    console.error('💥 Daily reset failed:', error)
+    
+    return NextResponse.json({
+      success: false,
+      timestamp: new Date().toISOString(),
+      executionTimeMs: executionTime,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// Helper function to determine if a habit should be tracked today
+function shouldHabitBeTrackedToday(frequency: string, date: Date, createdAt: Date): boolean {
+  const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
+  
+  switch (frequency.toLowerCase()) {
+    case 'daily':
+      return true
+    
+    case 'weekly':
+      // Track on Mondays for weekly habits
+      return dayOfWeek === 1
+    
+    case 'monthly':
+      // Track on the 1st of each month
+      return date.getDate() === 1
+    
+    case 'weekdays only':
+      // Monday to Friday
+      return dayOfWeek >= 1 && dayOfWeek <= 5
+    
+    case 'weekends only':
+      // Saturday and Sunday
+      return dayOfWeek === 0 || dayOfWeek === 6
+    
+    case 'every monday':
+      return dayOfWeek === 1
+    
+    case 'every tuesday':
+      return dayOfWeek === 2
+    
+    case 'every wednesday':
+      return dayOfWeek === 3
+    
+    case 'every thursday':
+      return dayOfWeek === 4
+    
+    case 'every friday':
+      return dayOfWeek === 5
+    
+    case 'every saturday':
+      return dayOfWeek === 6
+    
+    case 'every sunday':
+      return dayOfWeek === 0
+    
+    // Handle custom frequencies like "every 2 days", "every 3 days", etc.
+    default:
+      if (frequency.startsWith('every ') && frequency.endsWith(' days')) {
+        const match = frequency.match(/every (\d+) days/)
+        if (match) {
+          const interval = parseInt(match[1])
+          // Calculate days since habit creation
+          const creationDate = new Date(createdAt)
+          creationDate.setHours(0, 0, 0, 0)
+          const daysSinceCreation = Math.floor((date.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000))
+          // Check if today falls on the interval
+          return daysSinceCreation % interval === 0
+        }
+      }
+      
+      // Default to daily for unknown frequencies
+      return true
+  }
+}
+
+// Allow GET requests for manual testing
+export async function GET(req: NextRequest) {
+  return POST(req)
+} 

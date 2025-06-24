@@ -64,16 +64,18 @@ model VerificationToken {
 }
 
 model Habit {
-  id        String     @id @default(cuid())
-  title     String
-  category  String     @default("general")
-  frequency String     @default("daily")
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  userId    String
-  logs      HabitLog[]
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String     @id @default(cuid())
+  title         String
+  category      String     @default("general")
+  frequency     String     @default("daily")
+  isActive      Boolean    @default(true)
+  currentStreak Int        @default(0)
+  bestStreak    Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  userId        String
+  logs          HabitLog[]
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("habits")
 }

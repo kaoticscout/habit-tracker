@@ -1,7 +1,12 @@
 {
+  "functions": {
+    "src/app/api/**": {
+      "maxDuration": 30
+    }
+  },
   "crons": [
     {
-      "path": "/api/habits/daily-check",
+      "path": "/api/habits/daily-reset",
       "schedule": "0 0 * * *"
     }
   ]
