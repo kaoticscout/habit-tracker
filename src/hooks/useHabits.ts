@@ -16,6 +16,8 @@ interface Habit {
   isActive: boolean
   createdAt: Date
   logs: HabitLog[]
+  currentStreak?: number
+  bestStreak?: number
 }
 
 export function useHabits() {
@@ -24,6 +26,178 @@ export function useHabits() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [migrationInProgress, setMigrationInProgress] = useState(false)
+
+  // Calculate streaks for a habit based on its logs
+  const calculateStreaks = (habit: Habit) => {
+    const { logs, frequency } = habit
+    
+    // Sort logs by date (newest first)
+    const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    
+    let currentStreak = 0
+    let bestStreak = 0
+    let tempStreak = 0
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // For daily habits, check consecutive days
+    if (frequency === 'daily' || frequency === 'weekdays') {
+      let checkDate = new Date(today)
+      let foundToday = false
+      
+      // Check if today is completed (for current streak)
+      const todayLog = sortedLogs.find(log => {
+        const logDate = new Date(log.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === today.getTime()
+      })
+      
+      if (todayLog && todayLog.completed) {
+        foundToday = true
+        currentStreak = 1
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        // If today isn't completed, start checking from yesterday
+        checkDate.setDate(checkDate.getDate() - 1)
+      }
+      
+      // Count backwards for current streak
+      while (true) {
+        // Skip weekends for weekdays frequency
+        if (frequency === 'weekdays' && (checkDate.getDay() === 0 || checkDate.getDay() === 6)) {
+          checkDate.setDate(checkDate.getDate() - 1)
+          continue
+        }
+        
+        const dayLog = sortedLogs.find(log => {
+          const logDate = new Date(log.date)
+          logDate.setHours(0, 0, 0, 0)
+          return logDate.getTime() === checkDate.getTime()
+        })
+        
+        if (dayLog && dayLog.completed) {
+          currentStreak++
+          checkDate.setDate(checkDate.getDate() - 1)
+        } else {
+          break
+        }
+      }
+      
+      // Calculate best streak by going through all logs
+      tempStreak = 0
+      const allDates = new Set()
+      
+      // Get all unique dates with completed logs
+      sortedLogs.forEach(log => {
+        if (log.completed) {
+          const dateStr = new Date(log.date).toDateString()
+          allDates.add(dateStr)
+        }
+      })
+      
+      const completedDates = Array.from(allDates).map(dateStr => new Date(dateStr as string)).sort((a, b) => b.getTime() - a.getTime())
+      
+      for (let i = 0; i < completedDates.length; i++) {
+        let streakCount = 1
+        let currentDate = new Date(completedDates[i])
+        
+        // Count consecutive days from this date
+        for (let j = i + 1; j < completedDates.length; j++) {
+          const nextDate = new Date(completedDates[j])
+          const dayDiff = Math.floor((currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24))
+          
+          // For weekdays, account for weekends
+          let expectedDiff = 1
+          if (frequency === 'weekdays') {
+            const currentDay = currentDate.getDay()
+            if (currentDay === 1) expectedDiff = 3 // Monday after Friday
+            else if (currentDay === 0) expectedDiff = 2 // Sunday after Friday (shouldn't happen for weekdays)
+          }
+          
+          if (dayDiff === expectedDiff) {
+            streakCount++
+            currentDate = nextDate
+          } else {
+            break
+          }
+        }
+        
+        bestStreak = Math.max(bestStreak, streakCount)
+      }
+    } 
+    // For weekly habits, check consecutive weeks
+    else if (frequency === 'weekly') {
+      // Group logs by week (Monday to Sunday)
+      const weeklyCompletions = new Map()
+      
+      sortedLogs.forEach(log => {
+        if (log.completed) {
+          const logDate = new Date(log.date)
+          // Get Monday of the week
+          const monday = new Date(logDate)
+          const dayOfWeek = monday.getDay()
+          const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Adjust for Sunday = 0
+          monday.setDate(monday.getDate() + diff)
+          monday.setHours(0, 0, 0, 0)
+          
+          const weekKey = monday.getTime()
+          weeklyCompletions.set(weekKey, true)
+        }
+      })
+      
+      const completedWeeks = Array.from(weeklyCompletions.keys()).sort((a, b) => b - a)
+      
+      // Calculate current streak
+      const thisWeekMonday = new Date(today)
+      const dayOfWeek = thisWeekMonday.getDay()
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      thisWeekMonday.setDate(thisWeekMonday.getDate() + diff)
+      thisWeekMonday.setHours(0, 0, 0, 0)
+      
+      let checkWeek = thisWeekMonday.getTime()
+      
+      // If this week is completed, start current streak from this week
+      if (weeklyCompletions.has(checkWeek)) {
+        currentStreak = 1
+        checkWeek -= 7 * 24 * 60 * 60 * 1000 // Go to previous week
+      } else {
+        // Start from last week
+        checkWeek -= 7 * 24 * 60 * 60 * 1000
+      }
+      
+      // Count backwards for current streak
+      while (weeklyCompletions.has(checkWeek)) {
+        currentStreak++
+        checkWeek -= 7 * 24 * 60 * 60 * 1000
+      }
+      
+      // Calculate best streak
+      for (let i = 0; i < completedWeeks.length; i++) {
+        let streakCount = 1
+        let currentWeek = completedWeeks[i]
+        
+        for (let j = i + 1; j < completedWeeks.length; j++) {
+          const nextWeek = completedWeeks[j]
+          const weekDiff = (currentWeek - nextWeek) / (7 * 24 * 60 * 60 * 1000)
+          
+          if (weekDiff === 1) {
+            streakCount++
+            currentWeek = nextWeek
+          } else {
+            break
+          }
+        }
+        
+        bestStreak = Math.max(bestStreak, streakCount)
+      }
+    }
+    
+    return {
+      currentStreak: Math.max(0, currentStreak),
+      bestStreak: Math.max(0, bestStreak)
+    }
+  }
 
   // Migrate localStorage data to database (only called during account creation)
   const migrateLocalStorageToDatabase = async () => {
@@ -145,7 +319,9 @@ export function useHabits() {
         ...habitData,
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       }
       const updatedHabits = [...habits, newHabit]
       setHabits(updatedHabits)
@@ -217,7 +393,20 @@ export function useHabits() {
             }]
           }
 
-          return { ...habit, logs: newLogs }
+          // Create updated habit with new logs
+          const updatedHabit = { 
+            ...habit, 
+            logs: newLogs,
+            currentStreak: habit.currentStreak || 0,
+            bestStreak: habit.bestStreak || 0
+          }
+          
+          // Calculate new streaks based on the updated logs
+          const streaks = calculateStreaks(updatedHabit)
+          updatedHabit.currentStreak = streaks.currentStreak
+          updatedHabit.bestStreak = Math.max(updatedHabit.bestStreak, streaks.bestStreak)
+
+          return updatedHabit
         }
         return habit
       })
@@ -379,7 +568,9 @@ export function useHabits() {
         frequency: 'daily',
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       },
       {
         id: 'mock-2',
@@ -388,7 +579,9 @@ export function useHabits() {
         frequency: 'daily',
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       },
       {
         id: 'mock-3',
@@ -397,7 +590,9 @@ export function useHabits() {
         frequency: 'daily',
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       },
       {
         id: 'mock-4',
@@ -406,7 +601,9 @@ export function useHabits() {
         frequency: 'daily',
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       },
       {
         id: 'mock-5',
@@ -415,7 +612,9 @@ export function useHabits() {
         frequency: 'daily',
         isActive: true,
         createdAt: new Date(),
-        logs: []
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0
       }
     ]
     return mockHabits
@@ -462,14 +661,16 @@ export function useHabits() {
       if (savedHabits) {
         try {
           const parsed = JSON.parse(savedHabits)
-          // Convert date strings back to Date objects
+          // Convert date strings back to Date objects and ensure streak fields exist
           const habitsWithDates = parsed.map((habit: any) => ({
             ...habit,
             createdAt: new Date(habit.createdAt),
             logs: habit.logs.map((log: any) => ({
               ...log,
               date: new Date(log.date)
-            }))
+            })),
+            currentStreak: habit.currentStreak || 0,
+            bestStreak: habit.bestStreak || 0
           }))
           setHabits(habitsWithDates)
         } catch (err) {
@@ -494,6 +695,36 @@ export function useHabits() {
     }
   }, [session])
 
+  // Refetch function that works for both authenticated and non-authenticated users
+  const refetch = async () => {
+    if (session?.user) {
+      // Authenticated user - fetch from database
+      await fetchHabits()
+    } else {
+      // Non-authenticated user - reload from localStorage
+      const savedHabits = localStorage.getItem('routinely-habits')
+      if (savedHabits) {
+        try {
+          const parsed = JSON.parse(savedHabits)
+          // Convert date strings back to Date objects and ensure streak fields exist
+          const habitsWithDates = parsed.map((habit: any) => ({
+            ...habit,
+            createdAt: new Date(habit.createdAt),
+            logs: habit.logs.map((log: any) => ({
+              ...log,
+              date: new Date(log.date)
+            })),
+            currentStreak: habit.currentStreak || 0,
+            bestStreak: habit.bestStreak || 0
+          }))
+          setHabits(habitsWithDates)
+        } catch (err) {
+          console.error('Error parsing saved habits during refetch:', err)
+        }
+      }
+    }
+  }
+
   return {
     habits,
     loading: loading || migrationInProgress,
@@ -503,6 +734,6 @@ export function useHabits() {
     deleteHabit,
     createSampleHabits,
     migrateLocalStorageToDatabase,
-    refetch: fetchHabits
+    refetch
   }
 } 

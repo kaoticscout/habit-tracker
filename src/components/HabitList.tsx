@@ -19,6 +19,7 @@ interface Habit {
   isActive: boolean
   createdAt: Date
   logs: HabitLog[]
+  currentStreak?: number
 }
 
 interface HabitListProps {
@@ -368,68 +369,60 @@ export default function HabitList({ habits, onToggleHabit, onEditHabit, onDelete
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    console.log(`Getting status for habit: ${habit.title}`)
-    console.log('Today date:', today.toISOString())
-    console.log('Habit logs:', habit.logs.map(log => ({
-      id: log.id,
-      date: new Date(log.date).toISOString(),
-      completed: log.completed
-    })))
-    
     // Find today's log regardless of completion status
     const todayLog = habit.logs.find(log => {
       const logDate = new Date(log.date)
       logDate.setHours(0, 0, 0, 0)
-      const isToday = logDate.getTime() === today.getTime()
-      console.log(`Comparing log date ${logDate.toISOString()} with today ${today.toISOString()}: ${isToday}, completed: ${log.completed}`)
-      return isToday  // Find today's log regardless of completion
+      return logDate.getTime() === today.getTime()
     })
     
     // Check if today's log is completed
     const isCompletedToday = todayLog ? todayLog.completed : false
     
-    console.log('Today log found:', !!todayLog, 'Completed:', isCompletedToday)
-    
-    // Calculate streak
-    let streak = 0
-    const sortedLogs = habit.logs
-      .filter(log => log.completed)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    
-    if (sortedLogs.length > 0) {
-      // Start from the most recent completed day
-      let currentDate = new Date(sortedLogs[0].date)
-      currentDate.setHours(0, 0, 0, 0)
+    // Use stored currentStreak if available, otherwise calculate
+    let streak: number
+    if (typeof habit.currentStreak === 'number') {
+      // Use the stored streak value from the habit data
+      streak = habit.currentStreak
+    } else {
+      // Fallback: calculate streak from logs (for backwards compatibility)
+      streak = 0
+      const sortedLogs = habit.logs
+        .filter(log => log.completed)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       
-      // If today is completed, start streak from today
-      if (isCompletedToday) {
-        currentDate = new Date(today)
-        streak = 1
-      }
-      
-      // Count consecutive days backwards
-      for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
-        const logDate = new Date(sortedLogs[i].date)
-        logDate.setHours(0, 0, 0, 0)
+      if (sortedLogs.length > 0) {
+        // Start from the most recent completed day
+        let currentDate = new Date(sortedLogs[0].date)
+        currentDate.setHours(0, 0, 0, 0)
         
-        const expectedDate = new Date(currentDate)
-        expectedDate.setDate(expectedDate.getDate() - (isCompletedToday ? i : i + 1))
+        // If today is completed, start streak from today
+        if (isCompletedToday) {
+          currentDate = new Date(today)
+          streak = 1
+        }
         
-        if (logDate.getTime() === expectedDate.getTime()) {
-          streak++
-        } else {
-          break
+        // Count consecutive days backwards
+        for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
+          const logDate = new Date(sortedLogs[i].date)
+          logDate.setHours(0, 0, 0, 0)
+          
+          const expectedDate = new Date(currentDate)
+          expectedDate.setDate(expectedDate.getDate() - (isCompletedToday ? i : i + 1))
+          
+          if (logDate.getTime() === expectedDate.getTime()) {
+            streak++
+          } else {
+            break
+          }
         }
       }
     }
     
-    const result = {
+    return {
       completed: isCompletedToday,
       streak
     }
-    
-    console.log(`Status result for ${habit.title}:`, result)
-    return result
   }
 
   const handleEdit = (habit: Habit) => {

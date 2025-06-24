@@ -713,34 +713,138 @@ export default function DashboardPage() {
   }
 
   const handleTestDailyReset = async () => {
+    // Prevent multiple simultaneous executions
+    if (testLoading) {
+      return
+    }
+    
     setTestLoading(true)
     setTestResult(null)
     
+    const executionId = `reset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
     try {
-      const response = await fetch('/api/habits/daily-reset', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      const data = await response.json()
-      
-      if (response.ok && data.success) {
-        setTestResult({
-          success: true,
-          message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs. Check your habits below - they should now be unchecked.`
+      if (!session?.user) {
+        // Handle localStorage habits for non-authenticated users
+        const savedHabits = localStorage.getItem('routinely-habits')
+        if (!savedHabits) {
+          setTestResult({
+            success: true,
+            message: '✅ No habits found in localStorage to reset.'
+          })
+          setTestLoading(false)
+          return
+        }
+
+        const localHabits = JSON.parse(savedHabits)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        console.log(`[${executionId}] Today is:`, {
+          date: today.toISOString(),
+          dayOfWeek: today.getDay(),
+          dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()],
+          isMonday: today.getDay() === 1
         })
         
-        // Small delay to let user see the success message, then refresh habits
-        setTimeout(async () => {
-          await refetch()
-        }, 1000)
-      } else {
-        setTestResult({
-          error: true,
-          message: `❌ Daily reset failed: ${data.error || 'Unknown error'}`
+        let processedCount = 0
+        let weeklySkipped = 0
+        let logsCreated = 0
+
+        const resetHabits = localHabits.map((habit: any) => {
+          const isWeekly = habit.frequency === 'weekly'
+          const isMonday = today.getDay() === 1
+
+          console.log(`[${executionId}] Habit "${habit.title}": frequency=${habit.frequency}, isWeekly=${isWeekly}, isMonday=${isMonday}`)
+
+          // Skip weekly habits if it's not Monday
+          if (isWeekly && !isMonday) {
+            weeklySkipped++
+            console.log(`[${executionId}] ⏭️ Skipping weekly habit "${habit.title}" (not Monday)`)
+            return habit
+          }
+
+          processedCount++
+
+          // Ensure habit has streak fields (for backwards compatibility)
+          if (typeof habit.currentStreak === 'undefined') habit.currentStreak = 0
+          if (typeof habit.bestStreak === 'undefined') habit.bestStreak = 0
+
+          // Check if there's already a log for today
+          const existingTodayLog = habit.logs.find((log: any) => {
+            const logDate = new Date(log.date)
+            logDate.setHours(0, 0, 0, 0)
+            return logDate.getTime() === today.getTime()
+          })
+
+          if (!existingTodayLog) {
+            // Add a reset log for today (incomplete)
+            const newLog = {
+              id: `${Date.now()}-${Math.random()}`,
+              date: today,
+              completed: false
+            }
+            logsCreated++
+            return {
+              ...habit,
+              logs: [...habit.logs, newLog]
+            }
+          } else if (existingTodayLog.completed) {
+            // If log exists and is completed, mark it as not completed
+            const updatedLogs = habit.logs.map((log: any) => {
+              if (log.id === existingTodayLog.id) {
+                return { ...log, completed: false }
+              }
+              return log
+            })
+            return {
+              ...habit,
+              logs: updatedLogs
+            }
+          }
+
+          // No changes needed - already has incomplete log for today
+          return habit
         })
+
+        // Save back to localStorage
+        localStorage.setItem('routinely-habits', JSON.stringify(resetHabits))
+        
+        setTestResult({
+          success: true,
+          message: `✅ Daily reset completed for localStorage! Processed ${processedCount} habits, skipped ${weeklySkipped} weekly habits, created ${logsCreated} new logs. Check your habits below - they should now be unchecked.`
+        })
+
+        // Refresh habits immediately
+        await refetch()
+
+      } else {
+        // Handle database habits for authenticated users
+        const response = await fetch('/api/habits/daily-reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        const data = await response.json()
+        
+        if (response.ok && data.success) {
+          setTestResult({
+            success: true,
+            message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs. Check your habits below - they should now be unchecked.`
+          })
+          
+          // Small delay to let user see the success message, then refresh habits
+          setTimeout(async () => {
+            await refetch()
+          }, 1000)
+        } else {
+          setTestResult({
+            error: true,
+            message: `❌ Daily reset failed: ${data.error || 'Unknown error'}`
+          })
+        }
       }
     } catch (error) {
       setTestResult({
