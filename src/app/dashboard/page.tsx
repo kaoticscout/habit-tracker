@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button'
 import CreateHabitModal from '@/components/CreateHabitModal'
 import HabitList from '@/components/HabitList'
 import ProgressCalendar from '@/components/ProgressCalendar'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, TestTube, RefreshCw } from 'lucide-react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SignInModal from '@/components/SignInModal'
 import SignUpModal from '@/components/SignUpModal'
@@ -372,6 +372,105 @@ const CalendarDescription = styled.p`
   }
 `
 
+const DevTestSection = styled.div`
+  background-color: ${theme.colors.primary[25]};
+  border: 2px dashed ${theme.colors.primary[200]};
+  border-radius: ${theme.borderRadius.lg};
+  padding: ${theme.spacing[4]};
+  margin-bottom: ${theme.spacing[6]};
+  text-align: left;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing[3]};
+    margin-bottom: ${theme.spacing[4]};
+  }
+`
+
+const DevTestTitle = styled.h3`
+  color: ${theme.colors.primary[800]};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  margin-bottom: ${theme.spacing[2]};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+`
+
+const DevTestDescription = styled.p`
+  color: ${theme.colors.primary[700]};
+  font-size: ${theme.typography.fontSize.xs};
+  margin-bottom: ${theme.spacing[3]};
+  line-height: ${theme.typography.lineHeight.relaxed};
+`
+
+const DevTestButtons = styled.div`
+  display: flex;
+  gap: ${theme.spacing[2]};
+  flex-wrap: wrap;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+  }
+`
+
+const DevTestButton = styled.button<{ $loading?: boolean }>`
+  background-color: ${theme.colors.primary[50]};
+  border: 1px solid ${theme.colors.primary[300]};
+  color: ${theme.colors.primary[800]};
+  border-radius: ${theme.borderRadius.md};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  font-size: ${theme.typography.fontSize.xs};
+  font-weight: ${theme.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.normal};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[1]};
+  min-height: 36px;
+  
+  &:hover {
+    background-color: ${theme.colors.primary[100]};
+    border-color: ${theme.colors.primary[400]};
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  ${props => props.$loading && `
+    opacity: 0.7;
+    
+    svg {
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `}
+`
+
+const DevTestResult = styled.div<{ $success?: boolean; $error?: boolean }>`
+  margin-top: ${theme.spacing[3]};
+  padding: ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.typography.fontSize.xs};
+  
+  ${props => props.$success && `
+    background-color: ${theme.colors.primary[25]};
+    border: 1px solid ${theme.colors.success};
+    color: ${theme.colors.success};
+  `}
+  
+  ${props => props.$error && `
+    background-color: ${theme.colors.gray[50]};
+    border: 1px solid ${theme.colors.error};
+    color: ${theme.colors.error};
+  `}
+`
+
 // Sample habits with different streak values and rich completion history
 const sampleHabits = [
   {
@@ -577,6 +676,10 @@ export default function DashboardPage() {
   const [editingHabit, setEditingHabit] = useState<any>(null)
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false)
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false)
+  
+  // Development test state
+  const [testLoading, setTestLoading] = useState(false)
+  const [testResult, setTestResult] = useState<{ success?: boolean; error?: boolean; message: string } | null>(null)
 
   // Show loading state during migration
   if (session?.user && loading && habits.length === 0) {
@@ -607,6 +710,48 @@ export default function DashboardPage() {
         </Content>
       </Container>
     )
+  }
+
+  const handleTestDailyReset = async () => {
+    setTestLoading(true)
+    setTestResult(null)
+    
+    try {
+      const response = await fetch('/api/habits/daily-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setTestResult({
+          success: true,
+          message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs.`
+        })
+        
+        // Refresh habits to show updated state
+        window.location.reload()
+      } else {
+        setTestResult({
+          error: true,
+          message: `❌ Daily reset failed: ${data.error || 'Unknown error'}`
+        })
+      }
+    } catch (error) {
+      setTestResult({
+        error: true,
+        message: `❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      })
+    } finally {
+      setTestLoading(false)
+    }
+  }
+
+  const handleRefreshHabits = () => {
+    window.location.reload()
   }
 
   const handleCreateHabit = () => {
@@ -690,6 +835,38 @@ export default function DashboardPage() {
           Every small action compounds into lasting positive change.
         </Subtitle>
 
+        {/* Development Test Section - Only show in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <DevTestSection>
+            <DevTestTitle>
+              <TestTube size={16} />
+              Development Testing
+            </DevTestTitle>
+            <DevTestDescription>
+              Test the daily reset functionality manually. This simulates the automatic cron job that runs at midnight PST.
+              Weekly habits will only be processed on Mondays, daily habits are processed every day.
+            </DevTestDescription>
+            <DevTestButtons>
+              <DevTestButton 
+                onClick={handleTestDailyReset}
+                disabled={testLoading}
+                $loading={testLoading}
+              >
+                {testLoading ? <RefreshCw size={14} /> : <TestTube size={14} />}
+                {testLoading ? 'Running Reset...' : 'Test Daily Reset'}
+              </DevTestButton>
+              <DevTestButton onClick={handleRefreshHabits}>
+                <RefreshCw size={14} />
+                Refresh Habits
+              </DevTestButton>
+            </DevTestButtons>
+            {testResult && (
+              <DevTestResult $success={testResult.success} $error={testResult.error}>
+                {testResult.message}
+              </DevTestResult>
+            )}
+          </DevTestSection>
+        )}
 
         {habits.length === 0 ? (
           <EmptyState>
