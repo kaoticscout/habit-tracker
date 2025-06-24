@@ -34,9 +34,9 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Ensure database connection
-          await prisma.$connect()
-          console.log('✅ Database connected successfully')
+          // Don't manually connect/disconnect in serverless environments
+          // Prisma handles connections automatically
+          console.log('✅ Using Prisma client for database query')
 
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
@@ -85,9 +85,8 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           console.error('💥 Auth error:', error)
           return null
-        } finally {
-          await prisma.$disconnect()
         }
+        // Removed manual disconnect - let Prisma handle connections
       }
     })
   ],
