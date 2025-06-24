@@ -33,25 +33,34 @@ export async function POST(req: NextRequest) {
         dayOfWeek: today.getDay()
       })
 
-      // Get all active habits with their logs
-      const allHabits = await prisma.habit.findMany({
-        where: { isActive: true },
-        include: {
-          logs: {
-            where: {
-              date: {
-                gte: yesterday,
-                lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Include today
-              }
-            }
-          },
-          user: {
-            select: { email: true }
-          }
-        }
-      })
+      // Get all active habits with their logs - using raw query to avoid schema conflicts
+      const allHabitsRaw = await prisma.$queryRaw`
+        SELECT 
+          h.id,
+          h.title,
+          h.category,
+          h.frequency,
+          h."isActive",
+          h."createdAt",
+          h."updatedAt",
+          h."userId",
+          u.email as user_email
+        FROM habits h
+        JOIN users u ON h."userId" = u.id
+        WHERE h."isActive" = true
+      ` as Array<{
+        id: string
+        title: string
+        category: string
+        frequency: string
+        isActive: boolean
+        createdAt: Date
+        updatedAt: Date
+        userId: string
+        user_email: string
+      }>
 
-      console.log(`📊 Found ${allHabits.length} active habits to process`)
+      console.log(`📊 Found ${allHabitsRaw.length} active habits to process`)
 
       let processedHabits = 0
       let streaksUpdated = 0
@@ -61,8 +70,13 @@ export async function POST(req: NextRequest) {
       const details: any[] = []
 
       // Process each habit
-      for (const habit of allHabits) {
+      for (const habitRaw of allHabitsRaw) {
         try {
+          const habit = {
+            ...habitRaw,
+            user: { email: habitRaw.user_email }
+          }
+          
           const isWeeklyHabit = habit.frequency.toLowerCase() === 'weekly'
           
           // For weekly habits, only process on Monday (start of new week)
@@ -94,6 +108,17 @@ export async function POST(req: NextRequest) {
             continue
           }
 
+          // Get logs for this habit in the relevant time period
+          const logs = await prisma.habitLog.findMany({
+            where: {
+              habitId: habit.id,
+              date: {
+                gte: yesterday,
+                lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Include today
+              }
+            }
+          })
+
           // For weekly habits, check the entire previous week for completion
           let wasCompletedInPeriod = false
           
@@ -121,7 +146,7 @@ export async function POST(req: NextRequest) {
             console.log(`📅 Weekly habit ${habit.title}: checked period ${lastWeekStart.toISOString()} to ${lastWeekEnd.toISOString()}, completed: ${wasCompletedInPeriod}`)
           } else {
             // For daily habits, check yesterday
-            const yesterdayLog = habit.logs.find(log => {
+            const yesterdayLog = logs.find(log => {
               const logDate = new Date(log.date)
               logDate.setHours(0, 0, 0, 0)
               return logDate.getTime() === yesterday.getTime()
@@ -130,7 +155,7 @@ export async function POST(req: NextRequest) {
           }
 
           // Find today's log (if it exists)
-          const todayLog = habit.logs.find(log => {
+          const todayLog = logs.find(log => {
             const logDate = new Date(log.date)
             logDate.setHours(0, 0, 0, 0)
             return logDate.getTime() === today.getTime()
@@ -191,7 +216,7 @@ export async function POST(req: NextRequest) {
           })
 
         } catch (error) {
-          const errorMsg = `Error processing habit ${habit.id} (${habit.title}): ${error instanceof Error ? error.message : 'Unknown error'}`
+          const errorMsg = `Error processing habit ${habitRaw.id} (${habitRaw.title}): ${error instanceof Error ? error.message : 'Unknown error'}`
           errors.push(errorMsg)
           console.error('💥', errorMsg)
         }
@@ -204,7 +229,7 @@ export async function POST(req: NextRequest) {
         weeklyHabitsSkipped,
         errors,
         details,
-        totalHabits: allHabits.length
+        totalHabits: allHabitsRaw.length
       }
     })
 

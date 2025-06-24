@@ -8,10 +8,23 @@
  */
 
 const fetch = require('node-fetch')
+const { PrismaClient } = require('@prisma/client')
 
 // Configuration
 const PRODUCTION_URL = process.env.PRODUCTION_URL || 'https://your-app.vercel.app'
 const LOCAL_URL = 'http://localhost:3000'
+
+// Create database URL with connection parameters to avoid prepared statement conflicts
+const getDatabaseUrl = () => {
+  const baseUrl = process.env.DATABASE_URL
+  if (!baseUrl) return baseUrl
+  
+  // Add parameters to disable prepared statements in production
+  const url = new URL(baseUrl)
+  url.searchParams.set('prepared_statements', 'false')
+  url.searchParams.set('pgbouncer', 'true')
+  return url.toString()
+}
 
 async function testEndpoint(url, description, options = {}) {
   console.log(`\n🔍 Testing: ${description}`)
@@ -201,6 +214,127 @@ curl -X GET "${PRODUCTION_URL}/api/habits" \\
   `)
 }
 
+async function debugProduction() {
+  console.log('🔍 Starting production debug...')
+  
+  const prisma = new PrismaClient({
+    log: ['query', 'error', 'warn'],
+    datasources: {
+      db: {
+        url: getDatabaseUrl()
+      }
+    }
+  })
+
+  try {
+    console.log('🔗 Testing database connection...')
+    await prisma.$connect()
+    console.log('✅ Database connected successfully')
+
+    // Check if users table exists and has data
+    console.log('\n👥 Checking users table...')
+    const userCount = await prisma.user.count()
+    console.log(`Found ${userCount} users`)
+
+    if (userCount > 0) {
+      const firstUser = await prisma.user.findFirst({
+        select: { id: true, email: true, name: true }
+      })
+      console.log('First user:', firstUser)
+    }
+
+    // Check habits table structure
+    console.log('\n🎯 Checking habits table...')
+    try {
+      const habitCount = await prisma.habit.count()
+      console.log(`Found ${habitCount} habits`)
+
+      // Try to fetch habits with new columns
+      console.log('\n🔍 Testing habit query with new columns...')
+      const habits = await prisma.habit.findMany({
+        take: 1,
+        select: {
+          id: true,
+          title: true,
+          currentStreak: true,
+          bestStreak: true,
+          isActive: true
+        }
+      })
+      console.log('✅ New columns exist and query successful')
+      console.log('Sample habit:', habits[0])
+    } catch (error) {
+      console.error('❌ Error querying habits with new columns:', error.message)
+      
+      // Try without new columns
+      console.log('\n🔍 Testing habit query without new columns...')
+      try {
+        const habits = await prisma.habit.findMany({
+          take: 1,
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            frequency: true,
+            isActive: true
+          }
+        })
+        console.log('✅ Basic habit query successful')
+        console.log('Sample habit:', habits[0])
+      } catch (basicError) {
+        console.error('❌ Even basic habit query failed:', basicError.message)
+      }
+    }
+
+    // Check habit logs
+    console.log('\n📊 Checking habit logs...')
+    try {
+      const logCount = await prisma.habitLog.count()
+      console.log(`Found ${logCount} habit logs`)
+    } catch (error) {
+      console.error('❌ Error querying habit logs:', error.message)
+    }
+
+    // Test the exact query from the API
+    console.log('\n🎯 Testing exact API query...')
+    try {
+      if (userCount > 0) {
+        const user = await prisma.user.findFirst()
+        if (user) {
+          const habits = await prisma.habit.findMany({
+            where: { 
+              userId: user.id,
+              isActive: true 
+            },
+            include: {
+              logs: {
+                where: {
+                  date: {
+                    gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                  }
+                },
+                orderBy: { date: 'desc' }
+              }
+            },
+            orderBy: { createdAt: 'asc' }
+          })
+          console.log('✅ API query successful')
+          console.log(`Found ${habits.length} habits for user`)
+        }
+      }
+    } catch (error) {
+      console.error('❌ API query failed:', error.message)
+      console.error('Full error:', error)
+    }
+
+  } catch (error) {
+    console.error('💥 Database connection or general error:', error)
+  } finally {
+    await prisma.$disconnect()
+    console.log('🔌 Database disconnected')
+  }
+}
+
 async function main() {
   console.log('Production Debug Tool')
   console.log('=====================\n')
@@ -216,6 +350,7 @@ async function main() {
   await testDatabaseConnection()
   checkEnvironmentVariables()
   printDebuggingTips()
+  await debugProduction()
 }
 
 if (require.main === module) {

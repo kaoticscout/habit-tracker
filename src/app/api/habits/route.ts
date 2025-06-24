@@ -32,23 +32,52 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('📊 Fetching habits from database...')
-    const habits = await prisma.habit.findMany({
-      where: { 
-        userId: user.id,
-        isActive: true 
-      },
-      include: {
-        logs: {
+    
+    // First get habits with safe column selection to avoid missing 'order' column in production
+    const habitsRaw = await prisma.$queryRaw`
+      SELECT 
+        h.id,
+        h.title,
+        h.category,
+        h.frequency,
+        h."isActive",
+        h."createdAt",
+        h."updatedAt",
+        h."userId"
+      FROM habits h
+      WHERE h."userId" = ${user.id} AND h."isActive" = true
+      ORDER BY h."createdAt" ASC
+    ` as Array<{
+      id: string
+      title: string
+      category: string
+      frequency: string
+      isActive: boolean
+      createdAt: Date
+      updatedAt: Date
+      userId: string
+    }>
+
+    // Then get logs for each habit
+    const habits = await Promise.all(
+      habitsRaw.map(async (habit) => {
+        const logs = await prisma.habitLog.findMany({
           where: {
+            habitId: habit.id,
             date: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
             }
           },
           orderBy: { date: 'desc' }
+        })
+        
+        return {
+          ...habit,
+          logs
         }
-      },
-      orderBy: { createdAt: 'asc' }
-    })
+      })
+    )
+    
     console.log('✅ Habits fetched successfully:', { count: habits.length })
 
     return NextResponse.json(habits)
