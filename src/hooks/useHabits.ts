@@ -484,11 +484,12 @@ export function useHabits() {
       setHabits(prev => {
         const updatedHabits = prev.map(habit => {
           if (habit.id === habitId) {
+            // Fix: Use the date directly from API without timezone conversion
             const resultDate = new Date(result.date)
-            resultDate.setHours(0, 0, 0, 0)
             
             console.log('Updating habit logs for:', habit.title)
-            console.log('Result date:', resultDate.toISOString())
+            console.log('API returned date:', result.date)
+            console.log('Parsed result date:', resultDate.toISOString())
             console.log('Result completed:', result.completed)
             console.log('Current logs:', habit.logs.map(log => ({ 
               id: log.id, 
@@ -498,8 +499,11 @@ export function useHabits() {
 
             const existingLogIndex = habit.logs.findIndex(log => {
               const logDate = new Date(log.date)
-              logDate.setHours(0, 0, 0, 0)
-              return logDate.getTime() === resultDate.getTime()
+              // Compare dates by converting both to date strings (YYYY-MM-DD)
+              const logDateStr = logDate.toISOString().split('T')[0]
+              const resultDateStr = resultDate.toISOString().split('T')[0]
+              console.log('Comparing dates:', { logDateStr, resultDateStr, match: logDateStr === resultDateStr })
+              return logDateStr === resultDateStr
             })
 
             let newLogs = [...habit.logs]
