@@ -402,14 +402,15 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       currentStreak: habit.currentStreak
     })
     
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    // Get today's date string in YYYY-MM-DD format (UTC)
+    const todayStr = new Date().toISOString().split('T')[0]
     
     let isCompletedToday = false
     
     // Handle different frequencies differently
     if (habit.frequency.toLowerCase() === 'weekly') {
       // For weekly habits, check if completed any time this week
+      const today = new Date()
       const startOfWeek = new Date(today)
       startOfWeek.setDate(today.getDate() - today.getDay() + 1) // Monday of this week
       startOfWeek.setHours(0, 0, 0, 0)
@@ -426,11 +427,16 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       
       isCompletedToday = thisWeekLogs.length > 0
     } else {
-      // For daily habits, check today's specific log
+      // For daily habits, check today's specific log using date string comparison
       const todayLog = habit.logs.find(log => {
-        const logDate = new Date(log.date)
-        logDate.setHours(0, 0, 0, 0)
-        return logDate.getTime() === today.getTime()
+        const logDateStr = new Date(log.date).toISOString().split('T')[0]
+        console.log(`🔍 [MEMO] Comparing dates for ${habit.title}:`, {
+          logDateStr,
+          todayStr,
+          match: logDateStr === todayStr,
+          logCompleted: log.completed
+        })
+        return logDateStr === todayStr
       })
       
       isCompletedToday = todayLog ? todayLog.completed : false
@@ -450,24 +456,24 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       
       if (sortedLogs.length > 0) {
         // Start from the most recent completed day
-        let currentDate = new Date(sortedLogs[0].date)
-        currentDate.setHours(0, 0, 0, 0)
+        let currentDateStr = new Date(sortedLogs[0].date).toISOString().split('T')[0]
         
         // If today is completed, start streak from today
         if (isCompletedToday) {
-          currentDate = new Date(today)
+          currentDateStr = todayStr
           streak = 1
         }
         
-        // Count consecutive days backwards
+        // Count consecutive days backwards using date strings
         for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
-          const logDate = new Date(sortedLogs[i].date)
-          logDate.setHours(0, 0, 0, 0)
+          const logDateStr = new Date(sortedLogs[i].date).toISOString().split('T')[0]
           
-          const expectedDate = new Date(currentDate)
-          expectedDate.setDate(expectedDate.getDate() - (isCompletedToday ? i : i + 1))
+          // Calculate expected date string for consecutive day
+          const currentDate = new Date(todayStr + 'T00:00:00.000Z')
+          currentDate.setDate(currentDate.getDate() - (isCompletedToday ? i : i + 1))
+          const expectedDateStr = currentDate.toISOString().split('T')[0]
           
-          if (logDate.getTime() === expectedDate.getTime()) {
+          if (logDateStr === expectedDateStr) {
             streak++
           } else {
             break
@@ -480,9 +486,8 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       completed: isCompletedToday,
       streak,
       todayLogs: habit.logs.filter(log => {
-        const logDate = new Date(log.date)
-        logDate.setHours(0, 0, 0, 0)
-        return logDate.getTime() === today.getTime()
+        const logDateStr = new Date(log.date).toISOString().split('T')[0]
+        return logDateStr === todayStr
       }).map(log => ({ date: log.date, completed: log.completed }))
     })
     
