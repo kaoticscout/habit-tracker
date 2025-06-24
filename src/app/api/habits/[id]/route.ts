@@ -32,6 +32,12 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       where: {
         id: params.id,
         userId: user.id
+      },
+      select: {
+        id: true,
+        title: true,
+        userId: true,
+        isActive: true
       }
     })
 
@@ -45,9 +51,18 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         ...(title !== undefined && { title }),
         ...(category !== undefined && { category }),
         ...(frequency !== undefined && { frequency }),
-        ...(order !== undefined && { order }),
+        // Skip order field in production to avoid column error
+        ...(order !== undefined && process.env.NODE_ENV === 'development' && { order }),
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        frequency: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
         logs: {
           where: {
             date: {
@@ -86,6 +101,11 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       where: {
         id: params.id,
         userId: user.id
+      },
+      select: {
+        id: true,
+        userId: true,
+        isActive: true
       }
     })
 

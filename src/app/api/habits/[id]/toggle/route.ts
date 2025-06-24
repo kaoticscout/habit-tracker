@@ -25,11 +25,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Check if habit belongs to user
+    // Check if habit belongs to user - use explicit column selection to avoid missing 'order' column
     const habit = await prisma.habit.findFirst({
       where: {
         id: params.id,
         userId: user.id,
+        isActive: true
+      },
+      select: {
+        id: true,
+        title: true,
+        userId: true,
         isActive: true
       }
     })
