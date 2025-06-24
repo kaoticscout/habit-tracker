@@ -11,9 +11,12 @@ interface RouteParams {
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
+    console.log(`🔄 [TOGGLE] Starting toggle for habit ${params.id}`)
+    
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
+      console.log('❌ [TOGGLE] No session or email')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -22,6 +25,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     })
 
     if (!user) {
+      console.log('❌ [TOGGLE] User not found')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -41,12 +45,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     })
 
     if (!habit) {
+      console.log('❌ [TOGGLE] Habit not found')
       return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
     }
+
+    console.log(`📋 [TOGGLE] Found habit: ${habit.title}`)
 
     // Get today's date (start of day)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    console.log(`📅 [TOGGLE] Today: ${today.toISOString()}`)
 
     // Check if there's already a log for today
     const existingLog = await prisma.habitLog.findUnique({
@@ -58,14 +66,22 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       }
     })
 
+    console.log(`📊 [TOGGLE] Existing log:`, existingLog ? {
+      id: existingLog.id,
+      completed: existingLog.completed,
+      date: existingLog.date.toISOString()
+    } : 'none')
+
     let log
     if (existingLog) {
+      console.log(`🔄 [TOGGLE] Toggling existing log: ${existingLog.completed} → ${!existingLog.completed}`)
       // Toggle existing log
       log = await prisma.habitLog.update({
         where: { id: existingLog.id },
         data: { completed: !existingLog.completed }
       })
     } else {
+      console.log('➕ [TOGGLE] Creating new log with completed: true')
       // Create new log for today
       log = await prisma.habitLog.create({
         data: {
@@ -77,13 +93,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       })
     }
 
+    console.log(`✅ [TOGGLE] Final result:`, {
+      id: log.id,
+      completed: log.completed,
+      date: log.date.toISOString()
+    })
+
     return NextResponse.json({
       success: true,
       completed: log.completed,
       date: log.date
     })
   } catch (error) {
-    console.error('Error toggling habit:', error)
+    console.error('💥 [TOGGLE] Error toggling habit:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 
