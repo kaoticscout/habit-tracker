@@ -198,12 +198,42 @@ export async function POST(req: NextRequest) {
             console.log(`⚠️ Could not update streak columns for ${habit.title} (columns may not exist in production)`)
           }
 
-          // For daily habits only: Create tomorrow's log entry (starts as incomplete)
-          // Weekly habits don't need daily log creation
+          // Reset today's log to incomplete for fresh start + create tomorrow's log
           let logAction = 'no_log_action'
           
           if (!isWeeklyHabit) {
-            // Check if tomorrow's log already exists
+            // First, reset today's log to incomplete so users start fresh
+            const todayLog = await prisma.habitLog.findFirst({
+              where: {
+                habitId: habit.id,
+                date: {
+                  gte: today,
+                  lt: tomorrow
+                }
+              }
+            })
+            
+            if (todayLog) {
+              // Reset today's log to incomplete (fresh start for new day)
+              await prisma.habitLog.update({
+                where: { id: todayLog.id },
+                data: { completed: false }
+              })
+              logAction = 'reset_today_to_incomplete'
+            } else {
+              // Create today's log as incomplete if it doesn't exist
+              await prisma.habitLog.create({
+                data: {
+                  habitId: habit.id,
+                  userId: habit.userId,
+                  date: today,
+                  completed: false
+                }
+              })
+              logAction = 'created_today_incomplete'
+            }
+            
+            // Also ensure tomorrow's log exists for continuity
             const tomorrowLog = await prisma.habitLog.findFirst({
               where: {
                 habitId: habit.id,
@@ -225,9 +255,7 @@ export async function POST(req: NextRequest) {
                 }
               })
               logsCreated++
-              logAction = 'created_tomorrow_log'
-            } else {
-              logAction = 'tomorrow_log_exists'
+              logAction += '_and_created_tomorrow'
             }
           }
 
