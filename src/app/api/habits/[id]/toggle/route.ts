@@ -25,30 +25,35 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
   let bestStreak = 0
 
   if (frequency === 'daily') {
-    // For daily habits
+    // For daily habits - calculate current streak from most recent completed day backwards
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Check if today is completed
-    const todayLog = logs.find(log => {
-      const logDate = new Date(log.date)
-      logDate.setHours(0, 0, 0, 0)
-      return logDate.getTime() === today.getTime()
-    })
+    // Find the most recent completed day (could be today or earlier)
+    let lastCompletedDate = null
+    for (const log of logs) {
+      if (log.completed) {
+        lastCompletedDate = new Date(log.date)
+        lastCompletedDate.setHours(0, 0, 0, 0)
+        break
+      }
+    }
 
-    if (todayLog?.completed) {
+    if (lastCompletedDate) {
+      // Start counting from the most recent completed day
       currentStreak = 1
       
-      // Count backwards for consecutive days
-      for (let i = 1; i < logs.length; i++) {
-        const expectedDate = new Date(today)
-        expectedDate.setDate(today.getDate() - i)
-        expectedDate.setHours(0, 0, 0, 0)
+      // Count backwards for consecutive days from the last completed date
+      let checkDate = new Date(lastCompletedDate)
+      for (let i = 1; ; i++) {
+        checkDate = new Date(lastCompletedDate)
+        checkDate.setDate(lastCompletedDate.getDate() - i)
+        checkDate.setHours(0, 0, 0, 0)
         
         const logForDate = logs.find(log => {
           const logDate = new Date(log.date)
           logDate.setHours(0, 0, 0, 0)
-          return logDate.getTime() === expectedDate.getTime()
+          return logDate.getTime() === checkDate.getTime()
         })
         
         if (logForDate?.completed) {
@@ -59,7 +64,7 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       }
     }
 
-    // Calculate best streak
+    // Calculate best streak by going through all logs chronologically
     let tempStreak = 0
     const sortedLogs = logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     
@@ -72,7 +77,7 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       }
     }
   } else if (frequency === 'weekly') {
-    // For weekly habits - check completion by week
+    // For weekly habits - calculate current streak from most recent completed week backwards
     const getWeekStart = (date: Date) => {
       const d = new Date(date)
       const day = d.getDay()
@@ -82,23 +87,23 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       return d
     }
 
-    const today = new Date()
-    const thisWeekStart = getWeekStart(today)
-    
-    // Check if this week has any completed logs
-    const thisWeekLogs = logs.filter(log => {
-      const logWeekStart = getWeekStart(new Date(log.date))
-      return logWeekStart.getTime() === thisWeekStart.getTime() && log.completed
-    })
+    // Find the most recent week with completed logs
+    let lastCompletedWeekStart = null
+    for (const log of logs) {
+      if (log.completed) {
+        lastCompletedWeekStart = getWeekStart(new Date(log.date))
+        break
+      }
+    }
 
-    if (thisWeekLogs.length > 0) {
+    if (lastCompletedWeekStart) {
       currentStreak = 1
       
-      // Count backwards for consecutive weeks
+      // Count backwards for consecutive weeks from the last completed week
       let weekOffset = 1
       while (true) {
-        const checkWeekStart = new Date(thisWeekStart)
-        checkWeekStart.setDate(thisWeekStart.getDate() - (weekOffset * 7))
+        const checkWeekStart = new Date(lastCompletedWeekStart)
+        checkWeekStart.setDate(lastCompletedWeekStart.getDate() - (weekOffset * 7))
         
         const weekLogs = logs.filter(log => {
           const logWeekStart = getWeekStart(new Date(log.date))
