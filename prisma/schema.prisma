@@ -82,16 +82,17 @@ model Habit {
 }
 
 model HabitLog {
-  id        String   @id @default(cuid())
-  date      DateTime
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  habitId   String
-  userId    String
-  notes     String?
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  date                 DateTime
+  completed            Boolean  @default(false)
+  updatedDuringToggle  Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  habitId              String
+  userId               String
+  notes                String?
+  habit                Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([habitId, date])
   @@map("habit_logs")

@@ -7,68 +7,92 @@
  * columns to the production database.
  */
 
-const { execSync } = require('child_process')
-const fs = require('fs')
+const { PrismaClient } = require('@prisma/client')
 
-async function migrateProduction() {
+const prisma = new PrismaClient()
+
+async function migrateProductionDatabase() {
   console.log('🚀 Starting production database migration...')
-  
-  try {
-    // Read the production environment file
-    if (!fs.existsSync('.env.production')) {
-      console.error('❌ .env.production file not found')
-      console.log('Run: npx vercel env pull .env.production')
-      return
-    }
-    
-    // Load environment variables from .env.production
-    const envContent = fs.readFileSync('.env.production', 'utf8')
-    const envLines = envContent.split('\n')
-    
-    envLines.forEach(line => {
-      if (line.trim() && !line.startsWith('#')) {
-        const [key, ...valueParts] = line.split('=')
-        if (key && valueParts.length > 0) {
-          const value = valueParts.join('=').replace(/^"(.*)"$/, '$1') // Remove quotes
-          process.env[key] = value
-        }
-      }
-    })
-    
-    console.log('✅ Environment variables loaded')
-    console.log(`📊 Using database: ${process.env.DATABASE_URL ? 'Found' : 'Missing'}`)
-    
-    if (!process.env.DATABASE_URL) {
-      console.error('❌ DATABASE_URL not found in .env.production')
-      return
-    }
-    
-    // Run Prisma db push
-    console.log('📤 Pushing schema to production database...')
-    execSync('npx prisma db push', { 
-      stdio: 'inherit',
-      env: { ...process.env }
-    })
-    
-    console.log('✅ Schema migration completed successfully!')
-    
-  } catch (error) {
-    console.error('❌ Migration failed:', error.message)
-    
-    console.log('\n🔧 Manual SQL Alternative:')
-    console.log('Run this SQL in your Supabase dashboard:')
-    console.log(`
-ALTER TABLE habits 
-ADD COLUMN IF NOT EXISTS "currentStreak" INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS "bestStreak" INTEGER DEFAULT 0;
+  console.log('======================================\n')
 
-UPDATE habits 
-SET "currentStreak" = 0, "bestStreak" = 0 
-WHERE "currentStreak" IS NULL OR "bestStreak" IS NULL;
-    `)
+  try {
+    // Check current database connection
+    console.log('📡 Testing database connection...')
+    await prisma.$queryRaw`SELECT 1 as connected`
+    console.log('✅ Database connection successful')
+
+    // Check if the column already exists
+    console.log('\n🔍 Checking if updatedDuringToggle column exists...')
+    const columnExists = await prisma.$queryRaw`
+      SELECT COUNT(*) as count
+      FROM information_schema.columns 
+      WHERE table_name = 'habit_logs' 
+        AND column_name = 'updatedDuringToggle'
+        AND table_schema = 'public'
+    `
+
+    const exists = columnExists[0].count > 0
+
+    if (exists) {
+      console.log('⏭️  Column already exists - no migration needed')
+      return
+    }
+
+    console.log('➕ Column does not exist - proceeding with migration')
+
+    // Apply the migration
+    console.log('\n🔄 Adding updatedDuringToggle column to habit_logs table...')
+    await prisma.$executeRaw`
+      ALTER TABLE habit_logs 
+      ADD COLUMN "updatedDuringToggle" BOOLEAN NOT NULL DEFAULT false
+    `
+
+    console.log('✅ Successfully added updatedDuringToggle column')
+
+    // Verify the migration
+    console.log('\n🔍 Verifying migration...')
+    const verification = await prisma.$queryRaw`
+      SELECT 
+        column_name, 
+        data_type, 
+        is_nullable, 
+        column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'habit_logs' 
+        AND table_schema = 'public'
+        AND column_name = 'updatedDuringToggle'
+    `
+
+    if (verification.length > 0) {
+      console.log('✅ Migration verified successfully')
+      console.log('Column details:', verification[0])
+    } else {
+      throw new Error('Migration verification failed - column not found')
+    }
+
+    // Check how many existing habit logs will get the default value
+    const logCount = await prisma.habitLog.count()
+    console.log(`\n📊 Updated ${logCount} existing habit logs with default value (false)`)
+
+    console.log('\n🎉 Production migration completed successfully!')
+    console.log('\n📋 Next steps:')
+    console.log('1. Deploy your updated application code')
+    console.log('2. Test the immediate streak updates feature')
+    console.log('3. Monitor for any issues in production')
+
+  } catch (error) {
+    console.error('\n❌ Migration failed:', error)
+    console.error('\n🔧 Troubleshooting steps:')
+    console.error('1. Check your DATABASE_URL environment variable')
+    console.error('2. Ensure the database is accessible')
+    console.error('3. Verify you have ALTER TABLE permissions')
+    console.error('4. Check if the habit_logs table exists')
+    
+    process.exit(1)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
-if (require.main === module) {
-  migrateProduction()
-} 
+// Run the migration
+migrateProductionDatabase() 

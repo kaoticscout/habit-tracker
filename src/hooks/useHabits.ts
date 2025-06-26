@@ -491,6 +491,7 @@ export function useHabits() {
             console.log('API returned date:', result.date)
             console.log('Parsed result date:', resultDate.toISOString())
             console.log('Result completed:', result.completed)
+            console.log('Streaks from API:', { currentStreak: result.currentStreak, bestStreak: result.bestStreak })
             console.log('Current logs:', habit.logs.map(log => ({ 
               id: log.id, 
               date: new Date(log.date).toISOString(), 
@@ -525,12 +526,22 @@ export function useHabits() {
               console.log('Added new log')
             }
 
-            const updatedHabit = { ...habit, logs: newLogs }
-            console.log('Updated habit logs:', updatedHabit.logs.map(log => ({ 
-              id: log.id, 
-              date: new Date(log.date).toISOString(), 
-              completed: log.completed 
-            })))
+            const updatedHabit = { 
+              ...habit, 
+              logs: newLogs,
+              // Update streaks immediately from API response
+              currentStreak: result.currentStreak ?? habit.currentStreak ?? 0,
+              bestStreak: result.bestStreak ?? habit.bestStreak ?? 0
+            }
+            console.log('Updated habit logs and streaks:', {
+              logs: updatedHabit.logs.map(log => ({ 
+                id: log.id, 
+                date: new Date(log.date).toISOString(), 
+                completed: log.completed 
+              })),
+              currentStreak: updatedHabit.currentStreak,
+              bestStreak: updatedHabit.bestStreak
+            })
             
             return updatedHabit
           }

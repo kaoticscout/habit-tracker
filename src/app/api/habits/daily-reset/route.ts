@@ -166,6 +166,37 @@ export async function POST(req: NextRequest) {
             periodDescription = `today ${today.toISOString().split('T')[0]}`
             
             console.log(`📅 Daily habit ${habit.title}: checked ${periodDescription}, log exists: ${!!todayLog}, completed: ${wasCompletedInPeriod}`)
+            
+            // Check if this habit was already updated during toggle today
+            if (todayLog?.updatedDuringToggle) {
+              console.log(`⏭️  Skipping streak update for ${habit.title} - already updated during toggle today`)
+              
+              // Just clear the flag and continue to next habit
+              await prisma.habitLog.update({
+                where: { id: todayLog.id },
+                data: { updatedDuringToggle: false }
+              })
+              
+              details.push({
+                habitId: habit.id,
+                habitName: habit.title,
+                userEmail: habit.user.email,
+                frequency: habit.frequency,
+                action: 'skipped_already_updated_during_toggle',
+                isWeeklyHabit,
+                wasCompletedInPeriod,
+                periodChecked: periodDescription,
+                logAction: 'cleared_toggle_flag',
+                oldStreak,
+                newStreak: oldStreak, // No change
+                oldBestStreak,
+                newBestStreak: oldBestStreak, // No change
+                streakChange: 0,
+                bestStreakChanged: false
+              })
+              
+              continue // Skip to next habit
+            }
           }
 
           // Calculate new streak values based on completion
