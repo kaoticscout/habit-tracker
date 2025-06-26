@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import CreateHabitModal from '@/components/CreateHabitModal'
 import HabitList from '@/components/HabitList'
 import ProgressCalendar from '@/components/ProgressCalendar'
+import { ResetCountdown } from '@/components/ResetCountdown'
 import { Plus, Sparkles, TestTube, RefreshCw } from 'lucide-react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SignInModal from '@/components/SignInModal'
@@ -950,6 +951,9 @@ export default function DashboardPage() {
           Track your habits and build consistent routines that help you achieve your goals. 
           Every small action compounds into lasting positive change.
         </Subtitle>
+
+        {/* Countdown Timer */}
+        <ResetCountdown />
 
         {/* Development Test Section - Only show in development */}
         {process.env.NODE_ENV === 'development' && (
