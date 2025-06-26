@@ -953,7 +953,7 @@ export default function DashboardPage() {
         </Subtitle>
 
         {/* Countdown Timer */}
-        <ResetCountdown />
+        <ResetCountdown onManualReset={handleTestDailyReset} />
 
         {/* Development Test Section - Only show in development */}
         {process.env.NODE_ENV === 'development' && (

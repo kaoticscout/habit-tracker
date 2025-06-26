@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
-import { Clock, RefreshCw } from 'lucide-react'
+import { Clock, RefreshCw, Play } from 'lucide-react'
 
 const CountdownContainer = styled.div`
   background: linear-gradient(135deg, ${theme.colors.primary[50]} 0%, ${theme.colors.primary[25]} 100%);
@@ -101,13 +101,49 @@ const CountdownSubtext = styled.div`
   }
 `
 
+const ManualResetButton = styled.button`
+  background: ${theme.colors.primary[500]};
+  color: white;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  padding: ${theme.spacing[2]} ${theme.spacing[4]};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.medium};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[1]};
+  cursor: pointer;
+  transition: all ${theme.transitions.normal};
+  margin-left: ${theme.spacing[3]};
+  
+  &:hover {
+    background: ${theme.colors.primary[600]};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-left: 0;
+    margin-top: ${theme.spacing[2]};
+    font-size: ${theme.typography.fontSize.xs};
+    padding: ${theme.spacing[1]} ${theme.spacing[3]};
+  }
+`
+
 interface TimeRemaining {
   hours: number
   minutes: number
   seconds: number
 }
 
-export function ResetCountdown() {
+interface ResetCountdownProps {
+  onManualReset?: () => void
+}
+
+export function ResetCountdown({ onManualReset }: ResetCountdownProps) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({ hours: 0, minutes: 0, seconds: 0 })
   const [isClient, setIsClient] = useState(false)
 
@@ -120,11 +156,17 @@ export function ResetCountdown() {
 
     const calculateTimeRemaining = (): TimeRemaining => {
       const now = new Date()
-      const tomorrow = new Date(now)
-      tomorrow.setDate(now.getDate() + 1)
-      tomorrow.setHours(0, 0, 0, 0) // Set to midnight
       
-      const timeDiff = tomorrow.getTime() - now.getTime()
+      // Calculate next 8 AM UTC (when the cron job runs)
+      const nextReset = new Date()
+      nextReset.setUTCHours(8, 0, 0, 0) // 8 AM UTC
+      
+      // If it's already past 8 AM UTC today, set to tomorrow's 8 AM UTC
+      if (now >= nextReset) {
+        nextReset.setUTCDate(nextReset.getUTCDate() + 1)
+      }
+      
+      const timeDiff = nextReset.getTime() - now.getTime()
       
       if (timeDiff <= 0) {
         return { hours: 0, minutes: 0, seconds: 0 }
@@ -182,11 +224,12 @@ export function ResetCountdown() {
     } else if (hours < 6) {
       return "Reset in a few hours"
     } else {
-      return "Reset at midnight tonight"
+      return "Reset at 8 AM UTC daily"
     }
   }
 
   const isAlmostTime = timeRemaining.hours === 0 && timeRemaining.minutes < 5
+  const isTimeForReset = timeRemaining.hours === 0 && timeRemaining.minutes === 0 && timeRemaining.seconds === 0
 
   return (
     <CountdownContainer>
@@ -199,12 +242,25 @@ export function ResetCountdown() {
       </CountdownIcon>
       <CountdownContent>
         <div>
-          <CountdownLabel>Next reset in</CountdownLabel>
+          <CountdownLabel>
+            {isTimeForReset ? "Reset time!" : "Next reset in"}
+          </CountdownLabel>
           <CountdownTime style={{ color: isAlmostTime ? theme.colors.primary[900] : undefined }}>
-            {formatTime(timeRemaining)}
+            {isTimeForReset ? "00:00:00" : formatTime(timeRemaining)}
           </CountdownTime>
-          <CountdownSubtext>{getResetMessage()}</CountdownSubtext>
+          <CountdownSubtext>
+            {isTimeForReset 
+              ? "The daily reset should run automatically, or trigger it manually below"
+              : getResetMessage()
+            }
+          </CountdownSubtext>
         </div>
+        {(isTimeForReset || isAlmostTime) && onManualReset && (
+          <ManualResetButton onClick={onManualReset}>
+            <Play size={14} />
+            {isTimeForReset ? "Run Reset Now" : "Manual Reset"}
+          </ManualResetButton>
+        )}
       </CountdownContent>
     </CountdownContainer>
   )
