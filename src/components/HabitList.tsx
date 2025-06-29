@@ -433,12 +433,17 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       // Find log that matches today's date
       const todayLog = habit.logs.find(log => {
         const logDate = new Date(log.date)
-        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
         
-        const match = logDateOnly.getTime() === todayOnly.getTime()
+        // Compare using date strings (YYYY-MM-DD) to avoid timezone issues
+        const logDateStr = logDate.toISOString().split('T')[0]
+        const todayDateStr = todayOnly.toISOString().split('T')[0]
+        
+        const match = logDateStr === todayDateStr
         console.log(`🔍 [MEMO] Comparing dates for ${habit.title}:`, {
-          logDate: logDateOnly.toISOString(),
+          logDate: logDate.toISOString(),
           today: todayOnly.toISOString(),
+          logDateStr,
+          todayDateStr,
           match,
           logCompleted: log.completed
         })
@@ -503,9 +508,12 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       todayLogs: habit.logs.filter(log => {
         const logDate = new Date(log.date)
         const today = new Date()
-        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
         const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        return logDateOnly.getTime() === todayOnly.getTime()
+        
+        // Compare using date strings (YYYY-MM-DD) to avoid timezone issues
+        const logDateStr = logDate.toISOString().split('T')[0]
+        const todayDateStr = todayOnly.toISOString().split('T')[0]
+        return logDateStr === todayDateStr
       }).map(log => ({ date: log.date, completed: log.completed }))
     })
     
