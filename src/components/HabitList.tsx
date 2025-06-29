@@ -428,14 +428,23 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
         }))
       })
       
-      // Check if there's any completed log this week
+      // Check if there's any completed log this week using string-based comparison
       const thisWeekLogs = habit.logs.filter(log => {
         const logDate = new Date(log.date)
-        const isInWeek = logDate >= startOfWeek && logDate <= endOfWeek
+        
+        // Use date strings to avoid timezone comparison issues
+        const logDateStr = logDate.toISOString().split('T')[0] // "2025-06-29"
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0] // "2025-06-23" 
+        const endOfWeekStr = endOfWeek.toISOString().split('T')[0] // "2025-06-29"
+        
+        const isInWeek = logDateStr >= startOfWeekStr && logDateStr <= endOfWeekStr
         const isCompleted = log.completed
         
         console.log(`🗓️ [MEMO] Checking log for ${habit.title}:`, {
           logDate: logDate.toISOString(),
+          logDateStr,
+          startOfWeekStr,
+          endOfWeekStr,
           isInWeek,
           isCompleted,
           includeInWeek: isInWeek && isCompleted
