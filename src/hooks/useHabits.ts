@@ -19,6 +19,7 @@ interface Habit {
   currentStreak?: number
   bestStreak?: number
   order?: number
+  lastUpdated?: number
 }
 
 export function useHabits() {
@@ -302,8 +303,41 @@ export function useHabits() {
         throw new Error('Failed to fetch habits')
       }
       const data = await response.json()
+      console.log('📊 [FETCH] Raw data from API:', data.map((h: any) => ({
+        id: h.id,
+        title: h.title,
+        logs: h.logs.map((l: any) => ({ date: l.date, completed: l.completed })),
+        currentStreak: h.currentStreak,
+        bestStreak: h.bestStreak
+      })))
+      
+      // Log the first habit in detail to debug
+      if (data.length > 0) {
+        console.log('📊 [FETCH] First habit details:', {
+          title: data[0].title,
+          currentStreak: data[0].currentStreak,
+          bestStreak: data[0].bestStreak,
+          allLogs: data[0].logs.map((l: any) => ({ 
+            date: new Date(l.date).toISOString(), 
+            completed: l.completed 
+          }))
+        })
+      }
       const habitsWithStreaks = data.map((habit: any) => {
-        const streaks = calculateStreaks(habit)
+        // Use database streak values if available, otherwise calculate
+        const dbCurrentStreak = habit.currentStreak ?? 0
+        const dbBestStreak = habit.bestStreak ?? 0
+        
+        // Only calculate streaks if database doesn't have them (backwards compatibility)
+        let currentStreak = dbCurrentStreak
+        let bestStreak = dbBestStreak
+        
+        if (dbCurrentStreak === 0 && dbBestStreak === 0) {
+          const calculatedStreaks = calculateStreaks(habit)
+          currentStreak = calculatedStreaks.currentStreak
+          bestStreak = calculatedStreaks.bestStreak
+        }
+        
         return {
           ...habit,
           createdAt: new Date(habit.createdAt),
@@ -311,8 +345,8 @@ export function useHabits() {
             ...log,
             date: new Date(log.date)
           })),
-          currentStreak: streaks.currentStreak,
-          bestStreak: streaks.bestStreak
+          currentStreak,
+          bestStreak
         }
       })
       
@@ -516,14 +550,14 @@ export function useHabits() {
                 completed: result.completed
               }
               console.log('Updated existing log at index:', existingLogIndex)
-            } else if (result.completed) {
-              // Add new log only if completed is true
+            } else {
+              // Add new log for any toggle action (completed or not)
               newLogs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 date: resultDate,
                 completed: result.completed
               })
-              console.log('Added new log')
+              console.log('Added new log with completed:', result.completed)
             }
 
             const updatedHabit = { 
@@ -531,7 +565,9 @@ export function useHabits() {
               logs: newLogs,
               // Update streaks immediately from API response
               currentStreak: result.currentStreak ?? habit.currentStreak ?? 0,
-              bestStreak: result.bestStreak ?? habit.bestStreak ?? 0
+              bestStreak: result.bestStreak ?? habit.bestStreak ?? 0,
+              // Force re-render by updating a timestamp
+              lastUpdated: Date.now()
             }
             console.log('Updated habit logs and streaks:', {
               logs: updatedHabit.logs.map(log => ({ 
@@ -540,7 +576,8 @@ export function useHabits() {
                 completed: log.completed 
               })),
               currentStreak: updatedHabit.currentStreak,
-              bestStreak: updatedHabit.bestStreak
+              bestStreak: updatedHabit.bestStreak,
+              lastUpdated: updatedHabit.lastUpdated
             })
             
             return updatedHabit
@@ -746,7 +783,9 @@ export function useHabits() {
 
   // Refetch function that works for both authenticated and non-authenticated users
   const refetch = async () => {
+    console.log('🔄 [REFETCH] Starting refetch...')
     await fetchHabits()
+    console.log('✅ [REFETCH] Refetch completed')
   }
 
   const reorderHabits = async (reorderedHabits: Habit[]) => {

@@ -151,8 +151,8 @@ export async function POST(req: NextRequest) {
             
             console.log(`📅 Weekly habit ${habit.title}: checked ${periodDescription}, found ${weeklyLogs.length} completed logs, completed: ${wasCompletedInPeriod}`)
           } else {
-            // For daily habits: check if completed TODAY
-            const todayLog = await prisma.habitLog.findFirst({
+            // For daily habits: check if completed TODAY to determine tomorrow's streak
+            const currentDayLog = await prisma.habitLog.findFirst({
               where: {
                 habitId: habit.id,
                 date: {
@@ -162,40 +162,24 @@ export async function POST(req: NextRequest) {
               }
             })
             
-            wasCompletedInPeriod = todayLog?.completed || false
+            wasCompletedInPeriod = currentDayLog?.completed || false
             periodDescription = `today ${today.toISOString().split('T')[0]}`
             
-            console.log(`📅 Daily habit ${habit.title}: checked ${periodDescription}, log exists: ${!!todayLog}, completed: ${wasCompletedInPeriod}`)
+            console.log(`📅 Daily habit ${habit.title}: checked ${periodDescription}, log exists: ${!!currentDayLog}, completed: ${wasCompletedInPeriod}`)
+            console.log(`📅 Today date range: ${today.toISOString()} to ${tomorrow.toISOString()}`)
             
             // Check if this habit was already updated during toggle today
-            if (todayLog?.updatedDuringToggle) {
-              console.log(`⏭️  Skipping streak update for ${habit.title} - already updated during toggle today`)
+            if (currentDayLog?.updatedDuringToggle) {
+              console.log(`🔄 Processing habit ${habit.title} that was updated during toggle today - will clear flag and continue with reset`)
               
-              // Just clear the flag and continue to next habit
+              // Clear the flag but continue processing (don't skip)
+              // This allows manual daily reset testing to work properly
               await prisma.habitLog.update({
-                where: { id: todayLog.id },
+                where: { id: currentDayLog.id },
                 data: { updatedDuringToggle: false }
               })
               
-              details.push({
-                habitId: habit.id,
-                habitName: habit.title,
-                userEmail: habit.user.email,
-                frequency: habit.frequency,
-                action: 'skipped_already_updated_during_toggle',
-                isWeeklyHabit,
-                wasCompletedInPeriod,
-                periodChecked: periodDescription,
-                logAction: 'cleared_toggle_flag',
-                oldStreak,
-                newStreak: oldStreak, // No change
-                oldBestStreak,
-                newBestStreak: oldBestStreak, // No change
-                streakChange: 0,
-                bestStreakChanged: false
-              })
-              
-              continue // Skip to next habit
+              console.log(`✅ Cleared updatedDuringToggle flag for ${habit.title}, continuing with reset`)
             }
           }
 
@@ -204,17 +188,21 @@ export async function POST(req: NextRequest) {
           let newBestStreak = oldBestStreak
           let streakAction = ''
           
+          console.log(`🔢 Streak calculation for ${habit.title}: wasCompletedInPeriod=${wasCompletedInPeriod}, oldStreak=${oldStreak}, oldBestStreak=${oldBestStreak}`)
+          
           if (wasCompletedInPeriod) {
             // Habit was completed - increment streak
             newStreak = oldStreak + 1
             newBestStreak = Math.max(oldBestStreak, newStreak)
             streakAction = 'streak_incremented'
             streaksUpdated++
+            console.log(`✅ Streak incremented: ${oldStreak} → ${newStreak}`)
           } else {
             // Habit was not completed - reset streak to 0
             newStreak = 0
             newBestStreak = oldBestStreak // Keep best streak
             streakAction = 'streak_reset'
+            console.log(`❌ Streak reset: ${oldStreak} → 0`)
           }
           
           // Update streak values in database (only if columns exist)
@@ -229,11 +217,11 @@ export async function POST(req: NextRequest) {
             console.log(`⚠️ Could not update streak columns for ${habit.title} (columns may not exist in production)`)
           }
 
-          // Reset today's log to incomplete for fresh start + create tomorrow's log
+          // Create tomorrow's log for continuity (don't modify today's log - preserve user's progress)
           let logAction = 'no_log_action'
           
           if (!isWeeklyHabit) {
-            // First, reset today's log to incomplete so users start fresh
+            // Ensure today's log exists (but don't modify if it exists - preserve user's progress)
             const todayLog = await prisma.habitLog.findFirst({
               where: {
                 habitId: habit.id,
@@ -244,14 +232,7 @@ export async function POST(req: NextRequest) {
               }
             })
             
-            if (todayLog) {
-              // Reset today's log to incomplete (fresh start for new day)
-              await prisma.habitLog.update({
-                where: { id: todayLog.id },
-                data: { completed: false }
-              })
-              logAction = 'reset_today_to_incomplete'
-            } else {
+            if (!todayLog) {
               // Create today's log as incomplete if it doesn't exist
               await prisma.habitLog.create({
                 data: {
@@ -262,9 +243,11 @@ export async function POST(req: NextRequest) {
                 }
               })
               logAction = 'created_today_incomplete'
+            } else {
+              logAction = 'today_log_preserved'
             }
             
-            // Also ensure tomorrow's log exists for continuity
+            // Ensure tomorrow's log exists for continuity
             const tomorrowLog = await prisma.habitLog.findFirst({
               where: {
                 habitId: habit.id,

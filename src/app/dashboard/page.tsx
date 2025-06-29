@@ -846,10 +846,10 @@ export default function DashboardPage() {
             message: `✅ Daily reset completed! Processed ${data.summary.processedHabits} habits, skipped ${data.summary.weeklyHabitsSkipped} weekly habits, created ${data.summary.logsCreated} new logs. Check your habits below - they should now be unchecked.`
           })
           
-          // Small delay to let user see the success message, then refresh habits
-          setTimeout(async () => {
-            await refetch()
-          }, 1000)
+          // Immediately refresh habits to show unchecked state
+          console.log('🔄 Refreshing habits after daily reset...')
+          await refetch()
+          console.log('✅ Habits refreshed after daily reset')
         } else {
           setTestResult({
             error: true,
@@ -955,38 +955,36 @@ export default function DashboardPage() {
         {/* Countdown Timer */}
         <ResetCountdown onManualReset={handleTestDailyReset} />
 
-        {/* Development Test Section - Only show in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <DevTestSection>
-            <DevTestTitle>
-              <TestTube size={16} />
-              Development Testing
-            </DevTestTitle>
-            <DevTestDescription>
-              Test the daily reset functionality manually. This simulates the automatic cron job that runs at midnight PST.
-              Weekly habits will only be processed on Mondays, daily habits are processed every day.
-            </DevTestDescription>
-            <DevTestButtons>
-              <DevTestButton 
-                onClick={handleTestDailyReset}
-                disabled={testLoading}
-                $loading={testLoading}
-              >
-                {testLoading ? <RefreshCw size={14} /> : <TestTube size={14} />}
-                {testLoading ? 'Running Reset...' : 'Test Daily Reset'}
-              </DevTestButton>
-              <DevTestButton onClick={handleRefreshHabits}>
-                <RefreshCw size={14} />
-                Refresh Habits
-              </DevTestButton>
-            </DevTestButtons>
-            {testResult && (
-              <DevTestResult $success={testResult.success} $error={testResult.error}>
-                {testResult.message}
-              </DevTestResult>
-            )}
-          </DevTestSection>
-        )}
+        {/* Manual Reset Section - Always show for testing streak functionality */}
+        <DevTestSection>
+          <DevTestTitle>
+            <TestTube size={16} />
+            Manual Reset
+          </DevTestTitle>
+          <DevTestDescription>
+            Manually trigger the daily reset to test streak counting. This runs the same process as the automatic daily reset.
+            Use this to verify that your streaks are counting properly when you check/uncheck habits.
+          </DevTestDescription>
+          <DevTestButtons>
+            <DevTestButton 
+              onClick={handleTestDailyReset}
+              disabled={testLoading}
+              $loading={testLoading}
+            >
+              {testLoading ? <RefreshCw size={14} /> : <TestTube size={14} />}
+              {testLoading ? 'Running Reset...' : 'Trigger Daily Reset'}
+            </DevTestButton>
+            <DevTestButton onClick={handleRefreshHabits}>
+              <RefreshCw size={14} />
+              Refresh Habits
+            </DevTestButton>
+          </DevTestButtons>
+          {testResult && (
+            <DevTestResult $success={testResult.success} $error={testResult.error}>
+              {testResult.message}
+            </DevTestResult>
+          )}
+        </DevTestSection>
 
         {habits.length === 0 ? (
           <EmptyState>
@@ -1026,6 +1024,18 @@ export default function DashboardPage() {
               <ZenButton onClick={handleCreateHabit}>
                 <Plus size={20} />
                 Add New Habit
+              </ZenButton>
+              <ZenButton 
+                onClick={handleTestDailyReset}
+                disabled={testLoading}
+                style={{ 
+                  marginLeft: '1rem', 
+                  background: testLoading ? theme.colors.gray[400] : theme.colors.success,
+                  borderColor: testLoading ? theme.colors.gray[400] : theme.colors.success
+                }}
+              >
+                {testLoading ? <RefreshCw size={16} /> : <TestTube size={16} />}
+                {testLoading ? 'Resetting...' : 'Test Reset'}
               </ZenButton>
             </AddHabitButton>
           </HabitsContainer>

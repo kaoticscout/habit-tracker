@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
         h.category,
         h.frequency,
         h."isActive",
+        h."currentStreak",
+        h."bestStreak",
         h."createdAt",
         h."updatedAt",
         h."userId"
@@ -53,6 +55,8 @@ export async function GET(req: NextRequest) {
       category: string
       frequency: string
       isActive: boolean
+      currentStreak: number
+      bestStreak: number
       createdAt: Date
       updatedAt: Date
       userId: string

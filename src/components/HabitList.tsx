@@ -40,6 +40,7 @@ interface Habit {
   logs: HabitLog[]
   currentStreak?: number
   order?: number
+  lastUpdated?: number
 }
 
 interface HabitListProps {
@@ -399,11 +400,9 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     console.log(`🔄 [MEMO] Calculating status for ${habit.title}`, {
       logsCount: habit.logs.length,
       frequency: habit.frequency,
-      currentStreak: habit.currentStreak
+      currentStreak: habit.currentStreak,
+      lastUpdated: habit.lastUpdated
     })
-    
-    // Get today's date string in YYYY-MM-DD format (UTC)
-    const todayStr = new Date().toISOString().split('T')[0]
     
     let isCompletedToday = false
     
@@ -427,16 +426,24 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       
       isCompletedToday = thisWeekLogs.length > 0
     } else {
-      // For daily habits, check today's specific log using date string comparison
+      // For daily habits, look for today's specific log
+      const today = new Date()
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      
+      // Find log that matches today's date
       const todayLog = habit.logs.find(log => {
-        const logDateStr = new Date(log.date).toISOString().split('T')[0]
+        const logDate = new Date(log.date)
+        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
+        
+        const match = logDateOnly.getTime() === todayOnly.getTime()
         console.log(`🔍 [MEMO] Comparing dates for ${habit.title}:`, {
-          logDateStr,
-          todayStr,
-          match: logDateStr === todayStr,
+          logDate: logDateOnly.toISOString(),
+          today: todayOnly.toISOString(),
+          match,
           logCompleted: log.completed
         })
-        return logDateStr === todayStr
+        
+        return match
       })
       
       isCompletedToday = todayLog ? todayLog.completed : false
@@ -460,34 +467,45 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
         
         // If today is completed, start streak from today
         if (isCompletedToday) {
-          currentDateStr = todayStr
+          const today = new Date()
+          const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+          currentDateStr = todayOnly.toISOString().split('T')[0]
           streak = 1
         }
         
-        // Count consecutive days backwards using date strings
-        for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
-          const logDateStr = new Date(sortedLogs[i].date).toISOString().split('T')[0]
-          
-          // Calculate expected date string for consecutive day
-          const currentDate = new Date(todayStr + 'T00:00:00.000Z')
-          currentDate.setDate(currentDate.getDate() - (isCompletedToday ? i : i + 1))
-          const expectedDateStr = currentDate.toISOString().split('T')[0]
-          
-          if (logDateStr === expectedDateStr) {
-            streak++
-          } else {
-            break
-          }
+              // Count consecutive days backwards using date comparison
+      for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
+        const logDate = new Date(sortedLogs[i].date)
+        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
+        
+        // Calculate expected date for consecutive day
+        const today = new Date()
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        const expectedDate = new Date(todayOnly)
+        expectedDate.setDate(todayOnly.getDate() - (isCompletedToday ? i : i + 1))
+        
+        if (logDateOnly.getTime() === expectedDate.getTime()) {
+          streak++
+        } else {
+          break
         }
+      }
       }
     }
     
     console.log(`✅ [MEMO] Result for ${habit.title}:`, {
       completed: isCompletedToday,
       streak,
+      allLogs: habit.logs.map(log => ({ 
+        date: new Date(log.date).toISOString(), 
+        completed: log.completed 
+      })),
       todayLogs: habit.logs.filter(log => {
-        const logDateStr = new Date(log.date).toISOString().split('T')[0]
-        return logDateStr === todayStr
+        const logDate = new Date(log.date)
+        const today = new Date()
+        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        return logDateOnly.getTime() === todayOnly.getTime()
       }).map(log => ({ date: log.date, completed: log.completed }))
     })
     
@@ -495,7 +513,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       completed: isCompletedToday,
       streak
     }
-  }, [habit.logs, habit.currentStreak, habit.frequency])
+  }, [habit.logs, habit.currentStreak, habit.frequency, habit.lastUpdated])
 
   return (
     <HabitItem 
