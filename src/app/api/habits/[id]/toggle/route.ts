@@ -11,6 +11,8 @@ interface RouteParams {
 
 // Helper function to calculate streaks for a habit
 const calculateHabitStreaks = async (habitId: string, userId: string, frequency: string) => {
+  console.log(`🧮 [CALC] Starting calculateHabitStreaks for habit ${habitId}, frequency: ${frequency}`)
+  
   const logs = await prisma.habitLog.findMany({
     where: {
       habitId,
@@ -20,6 +22,13 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       date: 'desc'
     }
   })
+  
+  console.log(`🧮 [CALC] Found ${logs.length} logs for habit`)
+  console.log(`🧮 [CALC] Recent logs:`, logs.slice(0, 3).map(log => ({
+    date: log.date.toISOString(),
+    completed: log.completed,
+    updatedDuringToggle: log.updatedDuringToggle
+  })))
 
   let currentStreak = 0
   let bestStreak = 0
@@ -144,6 +153,8 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
     }
   }
 
+  console.log(`🧮 [CALC] Final calculation results: current=${currentStreak}, best=${bestStreak}`)
+  
   return {
     currentStreak: Math.max(0, currentStreak),
     bestStreak: Math.max(0, bestStreak)
@@ -195,10 +206,31 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     console.log(`📋 [TOGGLE] Found habit: ${habit.title} (${habit.frequency})`)
 
-    // Get today's date (start of day)
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    console.log(`📅 [TOGGLE] Today (start of day): ${today.toISOString()}`)
+    // Parse the date from request body if provided, otherwise use server's today
+    let requestBody: { date?: string } = {}
+    try {
+      const rawBody = await req.text()
+      console.log(`📨 [TOGGLE] Raw request body: ${rawBody}`)
+      if (rawBody) {
+        requestBody = JSON.parse(rawBody)
+        console.log(`📨 [TOGGLE] Parsed request body:`, requestBody)
+      }
+    } catch (e) {
+      console.log(`📨 [TOGGLE] No valid JSON body provided:`, e)
+    }
+
+    let today: Date
+    if (requestBody.date) {
+      // Use the date provided by the client (in their timezone)
+      today = new Date(requestBody.date)
+      console.log(`📅 [TOGGLE] Using client-provided date: ${requestBody.date} → ${today.toISOString()}`)
+    } else {
+      // Fallback: use server's date calculation (may have timezone issues)
+      const now = new Date()
+      today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      console.log(`📅 [TOGGLE] No client date provided, using server-calculated date: ${today.toISOString()}`)
+      console.log(`📅 [TOGGLE] Server timezone info: ${now.toString()}`)
+    }
 
     // Check if there's already a log for today
     const existingLog = await prisma.habitLog.findUnique({
@@ -218,18 +250,34 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     let log
     if (existingLog) {
-      console.log(`🔄 [TOGGLE] Toggling existing log: ${existingLog.completed} → ${!existingLog.completed}`)
+      const newCompletedState = !existingLog.completed
+      console.log(`🔄 [TOGGLE] Toggling existing log: ${existingLog.completed} → ${newCompletedState}`)
+      console.log(`📊 [TOGGLE] Existing log details:`, {
+        id: existingLog.id,
+        date: existingLog.date.toISOString(),
+        completed: existingLog.completed,
+        habitId: existingLog.habitId
+      })
+      
       // Toggle existing log
       log = await prisma.habitLog.update({
         where: { id: existingLog.id },
         data: { 
-          completed: !existingLog.completed,
+          completed: newCompletedState,
           // Mark that this was updated during toggle to prevent double counting in daily reset
           updatedDuringToggle: true
         }
       })
+      
+      console.log(`✅ [TOGGLE] Updated log result:`, {
+        id: log.id,
+        date: log.date.toISOString(),
+        completed: log.completed
+      })
     } else {
       console.log('➕ [TOGGLE] Creating new log with completed: true')
+      console.log(`📅 [TOGGLE] Creating log for date: ${today.toISOString()}`)
+      
       // Create new log for today
       log = await prisma.habitLog.create({
         data: {
@@ -241,15 +289,26 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           updatedDuringToggle: true
         }
       })
+      
+      console.log(`✅ [TOGGLE] Created new log:`, {
+        id: log.id,
+        date: log.date.toISOString(),
+        completed: log.completed
+      })
     }
 
     // Calculate and update streaks immediately
-    console.log('📊 [TOGGLE] Calculating new streaks...')
+    console.log(`🧮 [TOGGLE] Starting streak calculation for habit ${habit.title}`)
+    console.log(`🧮 [TOGGLE] Log completed state: ${log.completed}`)
+    console.log(`🧮 [TOGGLE] Habit current streaks before update: current=${habit.currentStreak}, best=${habit.bestStreak}`)
+    
     const streaks = await calculateHabitStreaks(params.id, user.id, habit.frequency)
+    
+    console.log(`🧮 [TOGGLE] Calculated new streaks: current=${streaks.currentStreak}, best=${streaks.bestStreak}`)
     
     // Update habit with new streak values
     try {
-      await prisma.habit.update({
+      const updatedHabit = await prisma.habit.update({
         where: { id: params.id },
         data: {
           currentStreak: streaks.currentStreak,
@@ -259,6 +318,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       })
       
       console.log(`📈 [TOGGLE] Updated streaks for ${habit.title}: ${habit.currentStreak || 0} → ${streaks.currentStreak} (best: ${habit.bestStreak || 0} → ${Math.max(habit.bestStreak || 0, streaks.bestStreak)})`)
+      console.log(`🧮 [TOGGLE] Updated habit streaks in database: current=${updatedHabit.currentStreak}, best=${updatedHabit.bestStreak}`)
     } catch (error) {
       console.log(`⚠️ [TOGGLE] Could not update streak columns for ${habit.title}:`, error)
     }

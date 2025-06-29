@@ -489,14 +489,23 @@ export function useHabits() {
     setError(null)
 
     try {
+      // Calculate today's date using the same method as the UI comparison
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      
       console.log('Making fetch request to:', `/api/habits/${habitId}/toggle`)
       console.log('Session user:', session?.user)
+      console.log('Sending today date:', today.toISOString())
+      
       const response = await fetch(`/api/habits/${habitId}/toggle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'same-origin', // Ensure cookies are sent
+        body: JSON.stringify({
+          date: today.toISOString()
+        })
       })
 
       console.log('Response status:', response.status)
