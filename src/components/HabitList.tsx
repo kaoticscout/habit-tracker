@@ -418,12 +418,33 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       endOfWeek.setDate(startOfWeek.getDate() + 6) // Sunday of this week
       endOfWeek.setHours(23, 59, 59, 999)
       
+      console.log(`🗓️ [MEMO] Weekly calculation for ${habit.title}:`, {
+        today: today.toISOString(),
+        startOfWeek: startOfWeek.toISOString(),
+        endOfWeek: endOfWeek.toISOString(),
+        allLogs: habit.logs.map(log => ({
+          date: new Date(log.date).toISOString(),
+          completed: log.completed
+        }))
+      })
+      
       // Check if there's any completed log this week
       const thisWeekLogs = habit.logs.filter(log => {
         const logDate = new Date(log.date)
-        return logDate >= startOfWeek && logDate <= endOfWeek && log.completed
+        const isInWeek = logDate >= startOfWeek && logDate <= endOfWeek
+        const isCompleted = log.completed
+        
+        console.log(`🗓️ [MEMO] Checking log for ${habit.title}:`, {
+          logDate: logDate.toISOString(),
+          isInWeek,
+          isCompleted,
+          includeInWeek: isInWeek && isCompleted
+        })
+        
+        return isInWeek && isCompleted
       })
       
+      console.log(`🗓️ [MEMO] This week's completed logs for ${habit.title}:`, thisWeekLogs.length)
       isCompletedToday = thisWeekLogs.length > 0
     } else {
       // For daily habits, look for today's specific log
