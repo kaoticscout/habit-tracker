@@ -245,6 +245,27 @@ export function Header() {
           
           {session?.user ? (
             <UserSection>
+              <Link 
+                href="/debug" 
+                style={{ 
+                  color: theme.colors.text.muted, 
+                  fontSize: theme.typography.fontSize.sm,
+                  textDecoration: 'none',
+                  padding: '0.5rem',
+                  borderRadius: theme.borderRadius.base,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = theme.colors.text.primary
+                  e.currentTarget.style.background = theme.colors.gray[50]
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = theme.colors.text.muted
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                🐛 Debug
+              </Link>
               <UserInfo>
                 <UserAvatar>
                   {getUserInitials(session.user.name, session.user.email)}
