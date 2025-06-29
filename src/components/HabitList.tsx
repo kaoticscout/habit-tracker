@@ -411,7 +411,11 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       // For weekly habits, check if completed any time this week
       const today = new Date()
       const startOfWeek = new Date(today)
-      startOfWeek.setDate(today.getDate() - today.getDay() + 1) // Monday of this week
+      
+      // Calculate Monday of this week (handle Sunday = 0 case)
+      const dayOfWeek = today.getDay()
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // If Sunday, go back 6 days to Monday
+      startOfWeek.setDate(today.getDate() - daysFromMonday)
       startOfWeek.setHours(0, 0, 0, 0)
       
       const endOfWeek = new Date(startOfWeek)
