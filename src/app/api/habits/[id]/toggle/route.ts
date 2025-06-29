@@ -100,7 +100,9 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       }
     }
   } else if (frequency === 'weekly') {
-    // For weekly habits - calculate current streak from most recent completed week backwards
+    // For weekly habits - calculate current streak properly
+    console.log(`🧮 [CALC] Starting weekly streak calculation`)
+    
     const getWeekStart = (date: Date) => {
       const d = new Date(date)
       const day = d.getDay()
@@ -110,27 +112,38 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
       return d
     }
 
-    // Find the most recent week with completed logs
-    let lastCompletedWeekStart = null
-    for (const log of logs) {
-      if (log.completed) {
-        lastCompletedWeekStart = getWeekStart(new Date(log.date))
-        break
-      }
-    }
-
-    if (lastCompletedWeekStart) {
+    // Check if THIS week has any completed logs
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const thisWeekStart = getWeekStart(today)
+    
+    const thisWeekLogs = logs.filter(log => {
+      const logWeekStart = getWeekStart(new Date(log.date))
+      return logWeekStart.getTime() === thisWeekStart.getTime() && log.completed
+    })
+    
+    console.log(`🧮 [CALC] This week's completed logs:`, thisWeekLogs.length)
+    console.log(`🧮 [CALC] Week start:`, thisWeekStart.toISOString())
+    
+    if (thisWeekLogs.length > 0) {
+      // This week has completed logs - start streak from this week and count backwards
+      console.log(`🧮 [CALC] This week is completed, counting backwards from this week`)
       currentStreak = 1
       
-      // Count backwards for consecutive weeks from the last completed week
+      // Count backwards for consecutive weeks before this week
       let weekOffset = 1
       while (true) {
-        const checkWeekStart = new Date(lastCompletedWeekStart)
-        checkWeekStart.setDate(lastCompletedWeekStart.getDate() - (weekOffset * 7))
+        const checkWeekStart = new Date(thisWeekStart)
+        checkWeekStart.setDate(thisWeekStart.getDate() - (weekOffset * 7))
         
         const weekLogs = logs.filter(log => {
           const logWeekStart = getWeekStart(new Date(log.date))
           return logWeekStart.getTime() === checkWeekStart.getTime() && log.completed
+        })
+        
+        console.log(`🧮 [CALC] Checking week ${weekOffset} weeks ago:`, {
+          weekStart: checkWeekStart.toISOString(),
+          completedLogs: weekLogs.length
         })
         
         if (weekLogs.length > 0) {
@@ -140,6 +153,10 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
           break
         }
       }
+    } else {
+      // This week has no completed logs - current streak is 0
+      console.log(`🧮 [CALC] This week is not completed, current streak is 0`)
+      currentStreak = 0
     }
 
     // Calculate best streak for weekly habits
