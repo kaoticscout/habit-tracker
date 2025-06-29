@@ -34,29 +34,33 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
   let bestStreak = 0
 
   if (frequency === 'daily') {
-    // For daily habits - calculate current streak from most recent completed day backwards
+    // For daily habits - calculate current streak properly
+    console.log(`🧮 [CALC] Starting daily streak calculation`)
+    
+    // Check if today is completed first
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Find the most recent completed day (could be today or earlier)
-    let lastCompletedDate = null
-    for (const log of logs) {
-      if (log.completed) {
-        lastCompletedDate = new Date(log.date)
-        lastCompletedDate.setHours(0, 0, 0, 0)
-        break
-      }
-    }
-
-    if (lastCompletedDate) {
-      // Start counting from the most recent completed day
+    const todayLog = logs.find(log => {
+      const logDate = new Date(log.date)
+      logDate.setHours(0, 0, 0, 0)
+      return logDate.getTime() === today.getTime()
+    })
+    
+    console.log(`🧮 [CALC] Today's log:`, todayLog ? {
+      date: todayLog.date.toISOString(),
+      completed: todayLog.completed
+    } : 'none')
+    
+    if (todayLog?.completed) {
+      // Today is completed - start streak from today and count backwards
+      console.log(`🧮 [CALC] Today is completed, counting backwards from today`)
       currentStreak = 1
       
-      // Count backwards for consecutive days from the last completed date
-      let checkDate = new Date(lastCompletedDate)
+      // Count backwards for consecutive days before today
       for (let i = 1; ; i++) {
-        checkDate = new Date(lastCompletedDate)
-        checkDate.setDate(lastCompletedDate.getDate() - i)
+        const checkDate = new Date(today)
+        checkDate.setDate(today.getDate() - i)
         checkDate.setHours(0, 0, 0, 0)
         
         const logForDate = logs.find(log => {
@@ -65,12 +69,22 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
           return logDate.getTime() === checkDate.getTime()
         })
         
+        console.log(`🧮 [CALC] Checking day ${i} days ago:`, {
+          date: checkDate.toISOString(),
+          hasLog: !!logForDate,
+          completed: logForDate?.completed
+        })
+        
         if (logForDate?.completed) {
           currentStreak++
         } else {
           break
         }
       }
+    } else {
+      // Today is not completed - current streak is 0
+      console.log(`🧮 [CALC] Today is not completed, current streak is 0`)
+      currentStreak = 0
     }
 
     // Calculate best streak by going through all logs chronologically
