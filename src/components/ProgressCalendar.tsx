@@ -11,8 +11,19 @@ interface HabitLog {
   completedAt: Date
 }
 
+interface Habit {
+  id: string
+  title: string
+  logs: Array<{
+    id: string
+    date: Date
+    completed: boolean
+  }>
+}
+
 interface ProgressCalendarProps {
   habitLogs: HabitLog[]
+  habits: Habit[] // Add habits prop to know total number of habits
   className?: string
 }
 
@@ -94,10 +105,11 @@ const DayLabel = styled.div`
   letter-spacing: 0.05em;
 `
 
-const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean; $hasActivity: boolean; $activityLevel: number }>`
+const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean }>`
   aspect-ratio: 1;
   border-radius: ${theme.borderRadius.base};
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: ${theme.typography.fontSize.xs};
@@ -105,8 +117,10 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean; $hasAc
   cursor: pointer;
   transition: all ${theme.transitions.normal};
   position: relative;
+  padding: ${theme.spacing[1]};
+  gap: 2px;
   
-  ${({ $isCurrentMonth, $isToday, $hasActivity, $activityLevel }) => {
+  ${({ $isCurrentMonth, $isToday }) => {
     if (!$isCurrentMonth) {
       return `
         color: ${theme.colors.text.disabled};
@@ -123,44 +137,6 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean; $hasAc
       `
     }
     
-    if ($hasActivity) {
-      // Show different intensity levels based on number of habits completed
-      let backgroundColor, textColor, fontWeight, boxShadow
-      
-      if ($activityLevel >= 5) {
-        // High activity - 5+ habits
-        backgroundColor = theme.colors.primary[600]
-        textColor = 'white'
-        fontWeight = theme.typography.fontWeight.semibold
-        boxShadow = '0 2px 6px rgba(14, 165, 233, 0.3)'
-      } else if ($activityLevel >= 3) {
-        // Medium-high activity - 3-4 habits
-        backgroundColor = theme.colors.primary[500]
-        textColor = 'white'
-        fontWeight = theme.typography.fontWeight.medium
-        boxShadow = '0 1px 4px rgba(14, 165, 233, 0.25)'
-      } else if ($activityLevel >= 2) {
-        // Medium activity - 2 habits
-        backgroundColor = theme.colors.primary[400]
-        textColor = 'white'
-        fontWeight = theme.typography.fontWeight.medium
-        boxShadow = '0 1px 3px rgba(14, 165, 233, 0.2)'
-      } else {
-        // Low activity - 1 habit
-        backgroundColor = theme.colors.primary[300]
-        textColor = 'white'
-        fontWeight = theme.typography.fontWeight.normal
-        boxShadow = '0 1px 2px rgba(14, 165, 233, 0.15)'
-      }
-      
-      return `
-        color: ${textColor};
-        background: ${backgroundColor};
-        font-weight: ${fontWeight};
-        box-shadow: ${boxShadow};
-      `
-    }
-    
     return `
       color: ${theme.colors.text.secondary};
       background: transparent;
@@ -170,6 +146,41 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean; $hasAc
         background: ${theme.colors.gray[50]};
         border-color: ${theme.colors.gray[200]};
       }
+    `
+  }}
+`
+
+const DayNumber = styled.div`
+  margin-bottom: 2px;
+`
+
+const ProgressBar = styled.div<{ $totalSegments: number }>`
+  display: flex;
+  gap: 1px;
+  width: 100%;
+  max-width: 28px;
+  height: 3px;
+  align-items: center;
+  justify-content: center;
+  
+  ${({ $totalSegments }) => $totalSegments === 0 && `
+    visibility: hidden;
+  `}
+`
+
+const ProgressSegment = styled.div<{ $isCompleted: boolean; $totalSegments: number }>`
+  height: 3px;
+  border-radius: 1px;
+  flex: 1;
+  transition: all ${theme.transitions.normal};
+  
+  ${({ $isCompleted, $totalSegments }) => {
+    // Adjust minimum width based on number of segments
+    const minWidth = $totalSegments <= 3 ? '6px' : $totalSegments <= 5 ? '4px' : '2px';
+    
+    return `
+      min-width: ${minWidth};
+      background: ${$isCompleted ? theme.colors.primary[500] : theme.colors.gray[200]};
     `
   }}
 `
@@ -204,6 +215,20 @@ const LegendItem = styled.div`
   gap: ${theme.spacing[2]};
   font-size: ${theme.typography.fontSize.sm};
   color: ${theme.colors.text.muted};
+`
+
+const LegendProgressBar = styled.div`
+  display: flex;
+  gap: 1px;
+  width: 16px;
+  height: 3px;
+`
+
+const LegendSegment = styled.div<{ $isCompleted: boolean }>`
+  height: 3px;
+  border-radius: 1px;
+  flex: 1;
+  background: ${({ $isCompleted }) => $isCompleted ? theme.colors.primary[500] : theme.colors.gray[200]};
 `
 
 const LegendDot = styled.div<{ $color: string; $border?: string }>`
@@ -251,7 +276,7 @@ const SimpleExplanation = styled.div`
   }
 `
 
-export default function ProgressCalendar({ habitLogs, className }: ProgressCalendarProps) {
+export default function ProgressCalendar({ habitLogs, habits, className }: ProgressCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   
   const today = new Date()
@@ -286,23 +311,43 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
     }
   }
   
-  // Get activity data for each day
-  const getDayActivity = (date: Date | null) => {
-    if (!date) return { hasActivity: false, activityLevel: 0 }
+  // Get progress data for each day
+  const getDayProgress = (date: Date | null) => {
+    if (!date) return { totalHabits: 0, completedHabits: 0, habitDetails: [] }
     
     const dayStart = new Date(date)
     dayStart.setHours(0, 0, 0, 0)
     const dayEnd = new Date(date)
     dayEnd.setHours(23, 59, 59, 999)
     
-    const dayLogs = habitLogs.filter(log => {
-      const logDate = new Date(log.completedAt)
-      return logDate >= dayStart && logDate <= dayEnd
+    // Get all habits that should be tracked on this date
+    const activeHabits = habits.filter(habit => {
+      // Check if habit was created before or on this date
+      const habitCreated = new Date(habit.logs[0]?.date || date)
+      return habitCreated <= dayEnd
     })
     
+    // For each habit, check if it was completed on this date
+    const habitDetails = activeHabits.map(habit => {
+      const dayLog = habit.logs.find(log => {
+        const logDate = new Date(log.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === dayStart.getTime()
+      })
+      
+      return {
+        habitId: habit.id,
+        habitTitle: habit.title,
+        completed: dayLog?.completed || false
+      }
+    })
+    
+    const completedHabits = habitDetails.filter(h => h.completed).length
+    
     return {
-      hasActivity: dayLogs.length > 0,
-      activityLevel: dayLogs.length
+      totalHabits: activeHabits.length,
+      completedHabits,
+      habitDetails
     }
   }
   
@@ -377,7 +422,7 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
       </CalendarHeader>
       
       <SimpleExplanation>
-        Darker blue shows more habits completed that day. Today is highlighted with a border.
+        Each progress bar shows your habit completion for that day. Blue segments represent completed habits.
       </SimpleExplanation>
       
       <CalendarGrid>
@@ -386,29 +431,31 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
         ))}
         
         {calendarDays.map((day, index) => {
-          const activity = getDayActivity(day.date)
+          const progress = getDayProgress(day.date)
+          const completionPercentage = progress.totalHabits > 0 
+            ? Math.round((progress.completedHabits / progress.totalHabits) * 100) 
+            : 0
+          
           return (
             <DayCell
               key={index}
               $isCurrentMonth={day.isCurrentMonth}
               $isToday={day.date ? isToday(day.date) : false}
-              $hasActivity={activity.hasActivity}
-              $activityLevel={activity.activityLevel}
-              title={activity.hasActivity ? `${activity.activityLevel} habit${activity.activityLevel > 1 ? 's' : ''} completed` : undefined}
+              title={progress.totalHabits > 0 
+                ? `${progress.completedHabits}/${progress.totalHabits} habits completed (${completionPercentage}%)\n${progress.habitDetails.map(h => `${h.completed ? '✓' : '○'} ${h.habitTitle}`).join('\n')}`
+                : undefined
+              }
             >
-              {day.date?.getDate()}
-              {activity.hasActivity && activity.activityLevel > 1 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '2px',
-                  right: '2px',
-                  fontSize: '8px',
-                  fontWeight: 'bold',
-                  opacity: 0.9
-                }}>
-                  {activity.activityLevel}
-                </div>
-              )}
+              <DayNumber>{day.date?.getDate()}</DayNumber>
+              <ProgressBar $totalSegments={progress.totalHabits}>
+                {Array.from({ length: progress.totalHabits }, (_, i) => (
+                  <ProgressSegment
+                    key={i}
+                    $isCompleted={i < progress.completedHabits}
+                    $totalSegments={progress.totalHabits}
+                  />
+                ))}
+              </ProgressBar>
             </DayCell>
           )
         })}
@@ -417,12 +464,12 @@ export default function ProgressCalendar({ habitLogs, className }: ProgressCalen
       <CalendarFooter>
         <Legend>
           <LegendItem>
-            <LegendDot $color={theme.colors.primary[300]} />
-            <span>Fewer habits</span>
-          </LegendItem>
-          <LegendItem>
-            <LegendDot $color={theme.colors.primary[600]} />
-            <span>More habits</span>
+            <LegendProgressBar>
+              <LegendSegment $isCompleted={true} />
+              <LegendSegment $isCompleted={true} />
+              <LegendSegment $isCompleted={false} />
+            </LegendProgressBar>
+            <span>Progress bar (2/3 habits)</span>
           </LegendItem>
           <LegendItem>
             <LegendDot $color="transparent" $border={`2px solid ${theme.colors.primary[300]}`} />

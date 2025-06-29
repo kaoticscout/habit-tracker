@@ -1061,6 +1061,7 @@ export default function DashboardPage() {
                     }))
                 )
               }
+              habits={habits}
             />
           </CalendarSection>
         )}
