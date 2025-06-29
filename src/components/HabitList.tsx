@@ -445,7 +445,8 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
           logDateStr,
           todayDateStr,
           match,
-          logCompleted: log.completed
+          logCompleted: log.completed,
+          logId: log.id
         })
         
         return match

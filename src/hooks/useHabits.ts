@@ -568,6 +568,23 @@ export function useHabits() {
               })
               console.log('Added new log with completed:', result.completed)
             }
+            
+            // Remove any duplicate logs for the same date (safety check)
+            // Keep the most recently updated log for each date
+            const dateLogMap = new Map()
+            newLogs.forEach(log => {
+              const logDateStr = new Date(log.date).toISOString().split('T')[0]
+              if (!dateLogMap.has(logDateStr) || log.completed === result.completed) {
+                // Keep this log if it's the first for this date, or if it matches the API result
+                dateLogMap.set(logDateStr, log)
+              }
+            })
+            
+            const uniqueLogs = Array.from(dateLogMap.values())
+            if (uniqueLogs.length !== newLogs.length) {
+              console.log('Removed duplicate logs:', newLogs.length - uniqueLogs.length)
+              newLogs = uniqueLogs
+            }
 
             const updatedHabit = { 
               ...habit, 
@@ -588,6 +605,19 @@ export function useHabits() {
               bestStreak: updatedHabit.bestStreak,
               lastUpdated: updatedHabit.lastUpdated
             })
+            
+            // Debug: Check for duplicate date logs
+            const todayLogs = updatedHabit.logs.filter(log => {
+              const logDate = new Date(log.date)
+              const logDateStr = logDate.toISOString().split('T')[0]
+              const resultDateStr = resultDate.toISOString().split('T')[0]
+              return logDateStr === resultDateStr
+            })
+            console.log('All logs for today after update:', todayLogs.map(log => ({
+              id: log.id,
+              date: new Date(log.date).toISOString(),
+              completed: log.completed
+            })))
             
             return updatedHabit
           }
