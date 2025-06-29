@@ -17,10 +17,10 @@ const HeaderContainer = styled.header`
   z-index: 100;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(20px);
-  padding: 1.5rem 2rem;
+  padding: 0.75rem 2rem;
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 0.5rem 1rem;
   }
 `;
 

@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button'
 import CreateHabitModal from '@/components/CreateHabitModal'
 import HabitList from '@/components/HabitList'
 import ProgressCalendar from '@/components/ProgressCalendar'
-import { ResetCountdown } from '@/components/ResetCountdown'
+
 import { Plus, Sparkles, TestTube, RefreshCw } from 'lucide-react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SignInModal from '@/components/SignInModal'
@@ -50,7 +50,7 @@ const Title = styled.h1`
   }
   
   @media (min-width: ${theme.breakpoints.lg}) {
-    margin-bottom: ${theme.spacing[6]};
+    margin-bottom: ${theme.spacing[3]};
   }
 `
 
@@ -62,12 +62,12 @@ const Subtitle = styled.p`
   font-weight: ${theme.typography.fontWeight.normal};
   
   @media (max-width: ${theme.breakpoints.sm}) {
-    margin-bottom: ${theme.spacing[8]};
+    margin-bottom: ${theme.spacing[3]};
     line-height: ${theme.typography.lineHeight.relaxed};
   }
   
   @media (min-width: ${theme.breakpoints.lg}) {
-    margin-bottom: ${theme.spacing[16]};
+    margin-bottom: ${theme.spacing[3]};
   }
 `
 
@@ -214,7 +214,7 @@ const AddHabitButton = styled.div`
   }
   
   @media (min-width: ${theme.breakpoints.lg}) {
-    margin-top: ${theme.spacing[12]};
+    margin-top: ${theme.spacing[2]};
   }
 `
 
@@ -951,41 +951,6 @@ export default function DashboardPage() {
           Track your habits and build consistent routines that help you achieve your goals. 
           Every small action compounds into lasting positive change.
         </Subtitle>
-
-        {/* Countdown Timer */}
-        <ResetCountdown onManualReset={handleTestDailyReset} />
-
-        {/* Manual Reset Section - Always show for testing streak functionality */}
-        <DevTestSection>
-          <DevTestTitle>
-            <TestTube size={16} />
-            Manual Reset
-          </DevTestTitle>
-          <DevTestDescription>
-            Manually trigger the daily reset to test streak counting. This runs the same process as the automatic daily reset.
-            Use this to verify that your streaks are counting properly when you check/uncheck habits.
-          </DevTestDescription>
-          <DevTestButtons>
-            <DevTestButton 
-              onClick={handleTestDailyReset}
-              disabled={testLoading}
-              $loading={testLoading}
-            >
-              {testLoading ? <RefreshCw size={14} /> : <TestTube size={14} />}
-              {testLoading ? 'Running Reset...' : 'Trigger Daily Reset'}
-            </DevTestButton>
-            <DevTestButton onClick={handleRefreshHabits}>
-              <RefreshCw size={14} />
-              Refresh Habits
-            </DevTestButton>
-          </DevTestButtons>
-          {testResult && (
-            <DevTestResult $success={testResult.success} $error={testResult.error}>
-              {testResult.message}
-            </DevTestResult>
-          )}
-        </DevTestSection>
-
         {habits.length === 0 ? (
           <EmptyState>
             <EmptyIcon>
@@ -1024,18 +989,6 @@ export default function DashboardPage() {
               <ZenButton onClick={handleCreateHabit}>
                 <Plus size={20} />
                 Add New Habit
-              </ZenButton>
-              <ZenButton 
-                onClick={handleTestDailyReset}
-                disabled={testLoading}
-                style={{ 
-                  marginLeft: '1rem', 
-                  background: testLoading ? theme.colors.gray[400] : theme.colors.success,
-                  borderColor: testLoading ? theme.colors.gray[400] : theme.colors.success
-                }}
-              >
-                {testLoading ? <RefreshCw size={16} /> : <TestTube size={16} />}
-                {testLoading ? 'Resetting...' : 'Test Reset'}
               </ZenButton>
             </AddHabitButton>
           </HabitsContainer>

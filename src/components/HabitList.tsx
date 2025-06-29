@@ -658,9 +658,6 @@ export default function HabitList({
 
   return (
     <Container>
-      <SortingHint>
-        ↕️ Drag and drop habits to customize your daily routine order
-      </SortingHint>
       
       <DndContext 
         sensors={sensors}
