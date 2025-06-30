@@ -3,71 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-// Test scenarios for easy debugging
-const TEST_SCENARIOS = {
-  'daily-streak': {
-    name: 'Daily Streak Test',
-    habits: [
-      {
-        title: 'Test Daily Habit',
-        frequency: 'daily',
-        logs: [
-          { date: '2025-01-01', completed: true },
-          { date: '2025-01-02', completed: true },
-          { date: '2025-01-03', completed: false },
-          { date: '2025-01-04', completed: true },
-          { date: '2025-01-05', completed: true }
-        ]
-      }
-    ]
-  },
-  'weekly-sunday': {
-    name: 'Weekly Sunday Edge Case',
-    habits: [
-      {
-        title: 'Test Weekly Habit',
-        frequency: 'weekly',
-        logs: [
-          { date: '2025-06-23', completed: true }, // Monday
-          { date: '2025-06-26', completed: true }, // Thursday
-          { date: '2025-06-29', completed: false }, // Sunday - will be toggled
-          { date: '2025-07-02', completed: true }  // Next Wednesday
-        ]
-      }
-    ]
-  },
-  'timezone-mix': {
-    name: 'Mixed Timezone Logs',
-    habits: [
-      {
-        title: 'Test Timezone Habit',
-        frequency: 'daily',
-        logs: [
-          { date: '2025-06-28T00:00:00.000Z', completed: true }, // UTC
-          { date: '2025-06-29T07:00:00.000Z', completed: false }, // UTC+7
-          { date: '2025-06-30T12:00:00.000Z', completed: true }  // UTC+12
-        ]
-      }
-    ]
-  },
-  'production-bug': {
-    name: 'Production Bug Scenario',
-    habits: [
-      {
-        title: 'Test Relationship Check-in',
-        frequency: 'weekly',
-        logs: [
-          { date: '2025-06-23T00:00:00.000Z', completed: true },
-          { date: '2025-06-25T00:00:00.000Z', completed: false },
-          { date: '2025-06-26T00:00:00.000Z', completed: true },
-          { date: '2025-06-29T00:00:00.000Z', completed: false },
-          { date: '2025-06-29T07:00:00.000Z', completed: true }
-        ]
-      }
-    ]
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -80,38 +15,146 @@ export async function GET(request: NextRequest) {
     const scenario = searchParams.get('scenario')
     const testDate = searchParams.get('date')
 
-    if (action === 'list-scenarios') {
+    // Create dynamic test scenarios based on current date
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    const twoDaysAgo = new Date(today)
+    twoDaysAgo.setDate(today.getDate() - 2)
+    
+    const todayStr = today.toISOString().split('T')[0]
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+    const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0]
+    
+    console.log(`📅 [DEBUG] Dynamic dates calculated:`, {
+      today: todayStr,
+      yesterday: yesterdayStr,
+      twoDaysAgo: twoDaysAgoStr,
+      currentTime: today.toISOString(),
+      currentDate: today.toDateString()
+    })
+
+    // Test scenarios for easy debugging
+    const TEST_SCENARIOS = {
+      'toggle-streak-preservation': {
+        name: 'Toggle Streak Preservation Test',
+        description: 'Tests that toggling only affects current day/week, not entire streak',
+        habits: [{
+          title: 'Daily Toggle Test',
+          frequency: 'daily',
+          logs: [
+            { date: twoDaysAgoStr, completed: true },
+            { date: yesterdayStr, completed: true },
+            { date: todayStr, completed: true }
+          ]
+        }]
+      },
+      'daily-toggle-test': {
+        name: 'Daily Habit Toggle Test',
+        description: 'Tests daily habit toggle behavior with existing streak',
+        habits: [{
+          title: 'Daily Toggle Habit',
+          frequency: 'daily',
+          logs: [
+            { date: twoDaysAgoStr, completed: true },
+            { date: yesterdayStr, completed: true },
+            { date: todayStr, completed: true }
+          ]
+        }]
+      },
+      'weekly-toggle-test': {
+        name: 'Weekly Habit Toggle Test',
+        description: 'Tests weekly habit toggle behavior with existing streak',
+        habits: [{
+          title: 'Weekly Toggle Habit',
+          frequency: 'weekly',
+          logs: [
+            { date: '2024-12-22', completed: true }, // Sunday
+            { date: '2024-12-29', completed: true }  // Next Sunday
+          ]
+        }]
+      },
+      'daily-streak': {
+        name: 'Daily Streak Test',
+        description: 'Tests basic daily streak functionality with consecutive days',
+        habits: [
+          {
+            title: 'Test Daily Exercise',
+            frequency: 'daily',
+            logs: [
+              { date: '2025-01-01', completed: true },
+              { date: '2025-01-02', completed: true },
+              { date: '2025-01-03', completed: true },
+              { date: '2025-01-04', completed: false },
+              { date: '2025-01-05', completed: true },
+              { date: '2025-01-06', completed: true }
+            ]
+          }
+        ]
+      },
+      'weekly-sunday': {
+        name: 'Weekly Sunday Bug Test',
+        description: 'Tests the Sunday week boundary bug in weekly habits',
+        habits: [
+          {
+            title: 'Test Weekly Review',
+            frequency: 'weekly',
+            logs: [
+              { date: '2025-01-05', completed: true }, // Sunday
+              { date: '2025-01-12', completed: true }, // Next Sunday
+              { date: '2025-01-19', completed: false }, // Missing week
+              { date: '2025-01-26', completed: true } // Should reset streak
+            ]
+          }
+        ]
+      }
+    }
+
+    if (action === 'list') {
       return NextResponse.json({
-        scenarios: Object.keys(TEST_SCENARIOS),
-        details: TEST_SCENARIOS
+        scenarios: Object.keys(TEST_SCENARIOS).map(key => ({
+          key,
+          ...TEST_SCENARIOS[key]
+        }))
       })
     }
 
     if (action === 'setup' && scenario) {
-      const testScenario = TEST_SCENARIOS[scenario as keyof typeof TEST_SCENARIOS]
+      const testScenario = TEST_SCENARIOS[scenario]
       if (!testScenario) {
         return NextResponse.json({ error: 'Invalid scenario' }, { status: 400 })
       }
 
-      // Clean up existing test habits
+      console.log(`🚀 [DEBUG] Setting up scenario: ${scenario}`)
+      
+      // First find the user by email
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      })
+      
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      
+      // Clear existing test habits
       await prisma.habit.deleteMany({
         where: {
-          userId: session.user.id,
-          title: { startsWith: 'Test ' }
+          userId: user.id,
+          title: {
+            in: testScenario.habits.map(h => h.title)
+          }
         }
       })
 
-      const results = []
-      
+      // Create new test habits
+      const createdHabits = []
       for (const habitData of testScenario.habits) {
-        // Create habit
         const habit = await prisma.habit.create({
           data: {
             title: habitData.title,
             frequency: habitData.frequency,
-            userId: session.user.id,
-            currentStreak: 0,
-            bestStreak: 0
+            userId: user.id,
+            currentStreak: 0
           }
         })
 
@@ -120,132 +163,90 @@ export async function GET(request: NextRequest) {
           await prisma.habitLog.create({
             data: {
               habitId: habit.id,
-              userId: session.user.id,
+              userId: user.id,
               date: new Date(logData.date),
               completed: logData.completed
             }
           })
         }
 
-        results.push({
-          habitId: habit.id,
-          title: habit.title,
-          logsCreated: habitData.logs.length
+        // Calculate and update initial streak
+        const logs = await prisma.habitLog.findMany({
+          where: { habitId: habit.id },
+          orderBy: { date: 'desc' }
         })
+
+        const targetDate = new Date()
+        const streak = habitData.frequency === 'daily' 
+          ? calculateDailyStreak(logs, targetDate)
+          : calculateWeeklyStreak(logs, targetDate)
+
+        await prisma.habit.update({
+          where: { id: habit.id },
+          data: { currentStreak: streak }
+        })
+
+        createdHabits.push(habit)
       }
 
-      return NextResponse.json({
-        message: `Test scenario "${testScenario.name}" set up successfully`,
-        results
+      console.log(`✅ [DEBUG] Setup completed successfully`)
+      return NextResponse.json({ 
+        message: 'Test scenario setup complete',
+        habits: createdHabits
       })
+    }
+
+    if (action === 'inspect' && scenario) {
+      const testScenario = TEST_SCENARIOS[scenario]
+      if (!testScenario) {
+        return NextResponse.json({ error: 'Invalid scenario' }, { status: 400 })
+      }
+
+      const habits = await prisma.habit.findMany({
+        where: {
+          userId: session.user.email,
+          title: {
+            in: testScenario.habits.map(h => h.title)
+          }
+        },
+        include: {
+          logs: {
+            orderBy: { date: 'desc' }
+          }
+        }
+      })
+
+      if (habits.length === 0) {
+        return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({ habits })
     }
 
     if (action === 'simulate-toggle') {
       const habitId = searchParams.get('habitId')
-      const clientDate = testDate ? new Date(testDate) : new Date()
-
-      if (!habitId) {
-        return NextResponse.json({ error: 'habitId required' }, { status: 400 })
+      const date = searchParams.get('date')
+      
+      if (!habitId || !date) {
+        return NextResponse.json({ error: 'Missing habitId or date' }, { status: 400 })
       }
 
-      // Get habit with logs
-      const habit = await prisma.habit.findUnique({
-        where: { id: habitId },
-        include: { logs: true }
+      // Find the user by email
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
       })
-
-      if (!habit) {
-        return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
+      
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
 
-      const targetDateStr = clientDate.toISOString().split('T')[0]
-
-      // Find existing log for this date
-      const existingLog = habit.logs.find(log => {
-        const logDateStr = log.date.toISOString().split('T')[0]
-        return logDateStr === targetDateStr
-      })
-
-      let newCompleted: boolean
-      let logAction: string
-
-      if (existingLog) {
-        // Toggle existing log
-        newCompleted = !existingLog.completed
-        await prisma.habitLog.update({
-          where: { id: existingLog.id },
-          data: { 
-            completed: newCompleted,
-            updatedDuringToggle: true
-          }
-        })
-        logAction = `Toggled existing log to ${newCompleted}`
-      } else {
-        // Create new log
-        newCompleted = true
-        await prisma.habitLog.create({
-          data: {
-            habitId: habit.id,
-            userId: session.user.id,
-            date: clientDate,
-            completed: true,
-            updatedDuringToggle: true
-          }
-        })
-        logAction = 'Created new completed log'
-      }
-
-      // Calculate new streak
-      const allLogs = await prisma.habitLog.findMany({
-        where: { habitId: habit.id },
-        orderBy: { date: 'desc' }
-      })
-
-      let newStreak = 0
-      if (habit.frequency === 'daily') {
-        newStreak = calculateDailyStreak(allLogs, clientDate)
-      } else {
-        newStreak = calculateWeeklyStreak(allLogs, clientDate)
-      }
-
-      const newBestStreak = Math.max(habit.bestStreak, newStreak)
-
-      // Update habit streaks
-      await prisma.habit.update({
-        where: { id: habit.id },
-        data: {
-          currentStreak: newStreak,
-          bestStreak: newBestStreak
-        }
-      })
-
-      return NextResponse.json({
-        message: 'Toggle simulated successfully',
-        details: {
-          habitTitle: habit.title,
-          testDate: targetDateStr,
-          logAction,
-          newCompleted,
-          oldStreak: habit.currentStreak,
-          newStreak,
-          oldBestStreak: habit.bestStreak,
-          newBestStreak,
-          totalLogs: allLogs.length
-        }
-      })
-    }
-
-    if (action === 'inspect') {
-      const habitId = searchParams.get('habitId')
-      const inspectDate = testDate ? new Date(testDate) : new Date()
-
-      if (!habitId) {
-        return NextResponse.json({ error: 'habitId required' }, { status: 400 })
-      }
-
-      const habit = await prisma.habit.findUnique({
-        where: { id: habitId },
-        include: { 
+      // Get the habit
+      const habit = await prisma.habit.findFirst({
+        where: {
+          id: habitId,
+          userId: user.id
+        },
+        include: {
           logs: {
             orderBy: { date: 'desc' }
           }
@@ -256,149 +257,135 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
       }
 
-      // Calculate what would happen with different dates
-      const testDates = []
-      for (let i = -3; i <= 3; i++) {
-        const testDate = new Date(inspectDate)
-        testDate.setDate(inspectDate.getDate() + i)
-        
-        let streak = 0
-        if (habit.frequency === 'daily') {
-          streak = calculateDailyStreak(habit.logs, testDate)
-        } else {
-          streak = calculateWeeklyStreak(habit.logs, testDate)
-        }
+      // Get current streak
+      const targetDate = new Date()
+      const oldStreak = habit.frequency === 'daily' 
+        ? calculateDailyStreak(habit.logs, targetDate)
+        : calculateWeeklyStreak(habit.logs, targetDate)
 
-        testDates.push({
-          date: testDate.toISOString().split('T')[0],
-          dayOfWeek: testDate.toLocaleDateString('en-US', { weekday: 'long' }),
-          calculatedStreak: streak
+      // Simulate the toggle by creating/updating a log for the test date
+      const testDate = new Date(date)
+      const existingLog = habit.logs.find(log => {
+        const logDate = new Date(log.date)
+        return logDate.toISOString().split('T')[0] === testDate.toISOString().split('T')[0]
+      })
+
+      if (existingLog) {
+        // Toggle the existing log
+        await prisma.habitLog.update({
+          where: { id: existingLog.id },
+          data: { completed: !existingLog.completed }
+        })
+      } else {
+        // Create a new log for the test date
+        await prisma.habitLog.create({
+          data: {
+            habitId: habit.id,
+            userId: user.id,
+            date: testDate,
+            completed: true
+          }
         })
       }
 
+      // Get updated logs and calculate new streak
+      const updatedLogs = await prisma.habitLog.findMany({
+        where: { habitId: habit.id },
+        orderBy: { date: 'desc' }
+      })
+
+      const newStreak = habit.frequency === 'daily' 
+        ? calculateDailyStreak(updatedLogs, targetDate)
+        : calculateWeeklyStreak(updatedLogs, targetDate)
+
+      // Update the habit's streak
+      await prisma.habit.update({
+        where: { id: habit.id },
+        data: { currentStreak: newStreak }
+      })
+
       return NextResponse.json({
-        habit: {
-          id: habit.id,
-          title: habit.title,
-          frequency: habit.frequency,
-          currentStreak: habit.currentStreak,
-          bestStreak: habit.bestStreak
-        },
-        logs: habit.logs.map(log => ({
-          id: log.id,
-          date: log.date.toISOString(),
-          dateStr: log.date.toISOString().split('T')[0],
-          completed: log.completed,
-          updatedDuringToggle: log.updatedDuringToggle
-        })),
-        streakCalculations: testDates
+        details: {
+          oldStreak,
+          newStreak,
+          change: newStreak - oldStreak
+        }
       })
     }
 
-    return NextResponse.json({
-      message: 'Debug API for testing habit logic',
-      availableActions: [
-        'list-scenarios - List available test scenarios',
-        'setup?scenario=X - Set up a test scenario',
-        'simulate-toggle?habitId=X&date=YYYY-MM-DD - Simulate toggling a habit',
-        'inspect?habitId=X&date=YYYY-MM-DD - Inspect habit state and calculations'
-      ]
-    })
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   } catch (error) {
-    console.error('Debug API error:', error)
+    console.error('❌ [DEBUG] Error in test habits API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// Streak calculation functions (matching the fixed logic)
 function calculateDailyStreak(logs: any[], targetDate: Date): number {
+  console.log(`🔍 [DEBUG] Calculating daily streak for ${logs.length} logs`)
+  
   const targetDateStr = targetDate.toISOString().split('T')[0]
+  console.log(`📅 [DEBUG] Target date: ${targetDateStr}`)
   
-  const targetLog = logs.find(log => {
-    const logDateStr = log.date.toISOString().split('T')[0]
-    return logDateStr === targetDateStr
-  })
+  let streak = 0
+  let currentDate = new Date(targetDate)
   
-  if (!targetLog || !targetLog.completed) {
-    return 0
-  }
-  
-  const sortedLogs = logs
-    .filter(log => log.completed)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map(log => log.date.toISOString().split('T')[0])
-  
-  const uniqueDates = Array.from(new Set(sortedLogs))
-  const targetIndex = uniqueDates.indexOf(targetDateStr)
-  
-  if (targetIndex === -1) return 0
-  
-  let streak = 1
-  for (let i = targetIndex - 1; i >= 0; i--) {
-    const currentDate = new Date(uniqueDates[i + 1])
-    const prevDate = new Date(uniqueDates[i])
+  while (true) {
+    const dateStr = currentDate.toISOString().split('T')[0]
+    const log = logs.find(l => l.date === dateStr)
     
-    const daysDiff = Math.floor(
-      (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
+    console.log(`🔍 [DEBUG] Checking ${dateStr}: ${log ? (log.completed ? '✅' : '❌') : 'no log'}`)
     
-    if (daysDiff === 1) {
-      streak++
-    } else {
+    if (!log || !log.completed) {
       break
     }
+    
+    streak++
+    currentDate.setDate(currentDate.getDate() - 1)
   }
   
+  console.log(`📊 [DEBUG] Final daily streak: ${streak}`)
   return streak
 }
 
 function calculateWeeklyStreak(logs: any[], targetDate: Date): number {
-  const targetYear = targetDate.getFullYear()
-  const targetMonth = targetDate.getMonth()
-  const targetDay = targetDate.getDate()
-  const dayOfWeek = targetDate.getDay()
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  console.log(`🔍 [DEBUG] Calculating weekly streak for ${logs.length} logs`)
   
-  const startOfWeek = new Date(targetYear, targetMonth, targetDay - daysFromMonday)
-  const endOfWeek = new Date(targetYear, targetMonth, targetDay - daysFromMonday + 6)
-  
-  const startOfWeekStr = startOfWeek.toISOString().split('T')[0]
-  const endOfWeekStr = endOfWeek.toISOString().split('T')[0]
-  
-  const thisWeekCompleted = logs.some(log => {
-    const logDateStr = log.date.toISOString().split('T')[0]
-    const isInWeek = logDateStr >= startOfWeekStr && logDateStr <= endOfWeekStr
-    return isInWeek && log.completed
-  })
-  
-  if (!thisWeekCompleted) {
-    return 0
-  }
-  
-  let streak = 1
-  let currentWeekStartDate = new Date(startOfWeek)
+  let streak = 0
+  let currentWeekStart = getWeekStart(targetDate)
   
   while (true) {
-    currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7)
-    const currentWeekEndDate = new Date(currentWeekStartDate)
-    currentWeekEndDate.setDate(currentWeekStartDate.getDate() + 6)
+    const weekEnd = new Date(currentWeekStart)
+    weekEnd.setDate(currentWeekStart.getDate() + 6)
     
-    const weekStartStr = currentWeekStartDate.toISOString().split('T')[0]
-    const weekEndStr = currentWeekEndDate.toISOString().split('T')[0]
-    
-    const prevWeekCompleted = logs.some(log => {
-      const logDateStr = log.date.toISOString().split('T')[0]
-      const isInWeek = logDateStr >= weekStartStr && logDateStr <= weekEndStr
-      return isInWeek && log.completed
+    const weekLogs = logs.filter(log => {
+      const logDate = new Date(log.date)
+      return logDate >= currentWeekStart && logDate <= weekEnd
     })
     
-    if (prevWeekCompleted) {
-      streak++
-    } else {
+    const hasCompletion = weekLogs.some(log => log.completed)
+    
+    const weekStartStr = currentWeekStart.toISOString().split('T')[0]
+    const weekEndStr = weekEnd.toISOString().split('T')[0]
+    console.log(`🔍 [DEBUG] Week ${weekStartStr} to ${weekEndStr}: ${hasCompletion ? '✅' : '❌'} (${weekLogs.length} logs)`)
+    
+    if (!hasCompletion) {
       break
     }
+    
+    streak++
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7)
   }
   
+  console.log(`📊 [DEBUG] Final weekly streak: ${streak}`)
   return streak
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day
+  d.setDate(diff)
+  d.setHours(0, 0, 0, 0)
+  return d
 } 

@@ -30,9 +30,11 @@ Previously, testing habit tracking logic was extremely difficult because:
 
 ### 2. Command Line Script
 
-**Usage**:
+**⚠️ Note**: The command line script requires authentication and currently doesn't work standalone. Use the web interface instead.
+
+**Intended Usage** (currently not functional):
 ```bash
-# Test specific scenarios
+# Test specific scenarios (requires auth)
 node scripts/test-habit-scenarios.js daily-streak
 node scripts/test-habit-scenarios.js weekly-sunday
 node scripts/test-habit-scenarios.js production-bug
@@ -41,6 +43,8 @@ node scripts/test-habit-scenarios.js timezone-mix
 # List all available scenarios
 node scripts/test-habit-scenarios.js
 ```
+
+**Current Status**: Returns "Unauthorized" error because it can't authenticate with the API. Use the web debug interface at `/debug` instead.
 
 **Output Example**:
 ```
