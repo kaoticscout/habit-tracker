@@ -344,39 +344,57 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     console.log(`📋 [TOGGLE] Found habit: ${habit.title} (${habit.frequency})`)
 
-    // For weekly habits, check if already completed this week
-    if (habit.frequency.toLowerCase() === 'weekly') {
+    // For weekly/monthly habits, check if already completed this week/month (but not today)
+    if (habit.frequency.toLowerCase() === 'weekly' || habit.frequency.toLowerCase() === 'monthly') {
       const today = new Date()
-      const startOfWeek = new Date(today)
       
-      // Calculate Monday of this week (handle Sunday = 0 case)
-      const dayOfWeek = today.getDay()
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-      startOfWeek.setDate(today.getDate() - daysFromMonday)
-      startOfWeek.setHours(0, 0, 0, 0)
+      let startOfPeriod: Date
+      let endOfPeriod: Date
       
-      const endOfWeek = new Date(startOfWeek)
-      endOfWeek.setDate(startOfWeek.getDate() + 6)
-      endOfWeek.setHours(23, 59, 59, 999)
+      if (habit.frequency.toLowerCase() === 'weekly') {
+        // Calculate Monday of this week (handle Sunday = 0 case)
+        const dayOfWeek = today.getDay()
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        startOfPeriod = new Date(today)
+        startOfPeriod.setDate(today.getDate() - daysFromMonday)
+        startOfPeriod.setHours(0, 0, 0, 0)
+        
+        endOfPeriod = new Date(startOfPeriod)
+        endOfPeriod.setDate(startOfPeriod.getDate() + 6)
+        endOfPeriod.setHours(23, 59, 59, 999)
+      } else {
+        // Monthly: start of month to end of month
+        startOfPeriod = new Date(today.getFullYear(), today.getMonth(), 1)
+        startOfPeriod.setHours(0, 0, 0, 0)
+        
+        endOfPeriod = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        endOfPeriod.setHours(23, 59, 59, 999)
+      }
       
-      // Check if there's already a completed log this week
-      const thisWeekCompletedLog = await prisma.habitLog.findFirst({
+      // Check if there's already a completed log this week/month (but not today)
+      const thisPeriodCompletedLog = await prisma.habitLog.findFirst({
         where: {
           habitId: params.id,
           userId: user.id,
           date: {
-            gte: startOfWeek,
-            lte: endOfWeek
+            gte: startOfPeriod,
+            lte: endOfPeriod
           },
-          completed: true
+          completed: true,
+          // Exclude today's log - we want to allow toggling today's log
+          NOT: {
+            date: {
+              equals: new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            }
+          }
         }
       })
       
-      if (thisWeekCompletedLog) {
-        console.log(`🚫 [TOGGLE] Weekly habit ${habit.title} already completed this week, preventing toggle`)
+      if (thisPeriodCompletedLog) {
+        console.log(`🚫 [TOGGLE] ${habit.frequency} habit ${habit.title} already completed earlier this ${habit.frequency.toLowerCase()}, preventing toggle`)
         return NextResponse.json({ 
-          error: 'Weekly habit already completed this week',
-          message: 'This weekly habit has already been completed for this week. You cannot toggle it until next week.',
+          error: `${habit.frequency} habit already completed this ${habit.frequency.toLowerCase()}`,
+          message: `This ${habit.frequency.toLowerCase()} habit has already been completed for this ${habit.frequency.toLowerCase()}. You cannot toggle it until next ${habit.frequency.toLowerCase()}.`,
           completed: true,
           completedThisWeek: true
         }, { status: 400 })

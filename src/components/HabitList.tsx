@@ -111,24 +111,37 @@ const DragHandle = styled.div`
   }
 `
 
-const Checkbox = styled.button<{ $completed: boolean; $completedThisWeek?: boolean }>`
+const Checkbox = styled.button<{ $completed: boolean; $completedThisWeek?: boolean; $completedEarlierThisWeek?: boolean }>`
   background: none;
   border: none;
-  cursor: ${({ $completedThisWeek }) => $completedThisWeek ? 'not-allowed' : 'pointer'};
+  cursor: ${({ $completedThisWeek, $completed }) => {
+    // For weekly/monthly habits, disable if completed this week/month but not today
+    // Allow interaction if completed today (even if it's a weekly/monthly habit)
+    if ($completedThisWeek && !$completed) return 'not-allowed'
+    return 'pointer'
+  }};
   color: ${({ $completed, $completedThisWeek }) => {
-    if ($completedThisWeek) return 'white'
-    return $completed ? theme.colors.success : theme.colors.gray[300]
+    // For weekly/monthly habits completed this week/month but not today, show gray
+    if ($completedThisWeek && !$completed) return theme.colors.text.disabled
+    if ($completed) return theme.colors.success // Green for completed today
+    return theme.colors.gray[300] // Gray for not completed
   }};
   margin-right: ${theme.spacing[4]};
   transition: all ${theme.transitions.normal};
-  opacity: ${({ $completedThisWeek }) => $completedThisWeek ? 0.8 : 1};
+  position: relative;
   
   &:hover {
     color: ${({ $completed, $completedThisWeek }) => {
-      if ($completedThisWeek) return 'white'
-      return $completed ? theme.colors.success : theme.colors.primary[400]
+      // For weekly/monthly habits completed this week/month but not today, stay gray
+      if ($completedThisWeek && !$completed) return theme.colors.text.disabled
+      if ($completed) return theme.colors.success // Stay green
+      return theme.colors.primary[400] // Blue for hover on incomplete
     }};
-    transform: ${({ $completedThisWeek }) => $completedThisWeek ? 'none' : 'scale(1.05)'};
+    transform: ${({ $completedThisWeek, $completed }) => {
+      // For weekly/monthly habits completed this week/month but not today, no transform
+      if ($completedThisWeek && !$completed) return 'none'
+      return 'scale(1.05)'
+    }};
   }
 `
 
@@ -403,7 +416,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     }
   }, [transform, transition, isDragging])
 
-  const { completed, completedThisWeek, streak } = useMemo(() => {
+  const { completed, completedThisWeek, completedEarlierThisWeek, streak } = useMemo(() => {
     console.log(`🔄 [MEMO] Calculating status for ${habit.title}`, {
       logsCount: habit.logs.length,
       frequency: habit.frequency,
@@ -413,6 +426,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     
     let isCompletedToday = false
     let isCompletedThisWeek = false
+    let isCompletedEarlierThisWeek = false
     
     // Handle different frequencies differently
     if (habit.frequency.toLowerCase() === 'weekly') {
@@ -468,8 +482,79 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       console.log(`🗓️ [MEMO] This week's completed logs for ${habit.title}:`, thisWeekLogs.length)
       isCompletedThisWeek = thisWeekLogs.length > 0
       
-      // For weekly habits, "completed today" means completed this week
-      isCompletedToday = isCompletedThisWeek
+      // For weekly habits, check if completed TODAY specifically
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const todayLog = habit.logs.find(log => {
+        const logDate = new Date(log.date)
+        const logDateStr = logDate.toISOString().split('T')[0]
+        const todayDateStr = todayOnly.toISOString().split('T')[0]
+        return logDateStr === todayDateStr
+      })
+      
+      isCompletedToday = todayLog ? todayLog.completed : false
+      
+      // Check if completed earlier this week (not today)
+      isCompletedEarlierThisWeek = isCompletedThisWeek && !isCompletedToday
+    } else if (habit.frequency.toLowerCase() === 'monthly') {
+      // For monthly habits, check if completed any time this month
+      const today = new Date()
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      endOfMonth.setHours(23, 59, 59, 999)
+      
+      console.log(`🗓️ [MEMO] Monthly calculation for ${habit.title}:`, {
+        today: today.toISOString(),
+        startOfMonth: startOfMonth.toISOString(),
+        endOfMonth: endOfMonth.toISOString(),
+        allLogs: habit.logs.map(log => ({
+          date: new Date(log.date).toISOString(),
+          completed: log.completed
+        }))
+      })
+      
+      // Check if there's any completed log this month using string-based comparison
+      const thisMonthLogs = habit.logs.filter(log => {
+        const logDate = new Date(log.date)
+        
+        // Use date strings to avoid timezone comparison issues
+        const logDateStr = logDate.toISOString().split('T')[0] // "2025-06-29"
+        const startOfMonthStr = startOfMonth.toISOString().split('T')[0] // "2025-06-01" 
+        const endOfMonthStr = endOfMonth.toISOString().split('T')[0] // "2025-06-30"
+        
+        const isInMonth = logDateStr >= startOfMonthStr && logDateStr <= endOfMonthStr
+        const isCompleted = log.completed
+        
+        console.log(`🗓️ [MEMO] Checking log for ${habit.title}:`, {
+          logDate: logDate.toISOString(),
+          logDateStr,
+          startOfMonthStr,
+          endOfMonthStr,
+          isInMonth,
+          isCompleted,
+          includeInMonth: isInMonth && isCompleted
+        })
+        
+        return isInMonth && isCompleted
+      })
+      
+      console.log(`🗓️ [MEMO] This month's completed logs for ${habit.title}:`, thisMonthLogs.length)
+      isCompletedThisWeek = thisMonthLogs.length > 0 // Reuse the variable for monthly habits
+      
+      // For monthly habits, check if completed TODAY specifically
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const todayLog = habit.logs.find(log => {
+        const logDate = new Date(log.date)
+        const logDateStr = logDate.toISOString().split('T')[0]
+        const todayDateStr = todayOnly.toISOString().split('T')[0]
+        return logDateStr === todayDateStr
+      })
+      
+      isCompletedToday = todayLog ? todayLog.completed : false
+      
+      // Check if completed earlier this month (not today)
+      isCompletedEarlierThisWeek = isCompletedThisWeek && !isCompletedToday
     } else {
       // For daily habits, look for today's specific log
       const today = new Date()
@@ -499,6 +584,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       
       isCompletedToday = todayLog ? todayLog.completed : false
       isCompletedThisWeek = false // Not applicable for daily habits
+      isCompletedEarlierThisWeek = false // Not applicable for daily habits
     }
     
     // Use stored currentStreak if available, otherwise calculate
@@ -548,6 +634,11 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     console.log(`✅ [MEMO] Result for ${habit.title}:`, {
       completed: isCompletedToday,
       completedThisWeek: isCompletedThisWeek,
+      completedEarlierThisWeek: isCompletedEarlierThisWeek,
+      frequency: habit.frequency,
+      shouldBeGray: isCompletedThisWeek && !isCompletedToday,
+      shouldBeDisabled: isCompletedThisWeek && !isCompletedToday,
+      period: habit.frequency.toLowerCase() === 'weekly' ? 'week' : habit.frequency.toLowerCase() === 'monthly' ? 'month' : 'day',
       streak,
       allLogs: habit.logs.map(log => ({ 
         date: new Date(log.date).toISOString(), 
@@ -568,6 +659,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     return {
       completed: isCompletedToday,
       completedThisWeek: isCompletedThisWeek,
+      completedEarlierThisWeek: isCompletedEarlierThisWeek,
       streak
     }
   }, [habit.logs, habit.currentStreak, habit.frequency, habit.lastUpdated])
@@ -585,30 +677,27 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       <Checkbox
         $completed={completed}
         $completedThisWeek={completedThisWeek}
+        $completedEarlierThisWeek={completedEarlierThisWeek}
         onClick={() => {
-          // Prevent toggling if completed this week (for weekly habits)
-          if (habit.frequency.toLowerCase() === 'weekly' && completedThisWeek) {
+          console.log(`🔍 [CHECKBOX] Click on ${habit.title}:`, {
+            completed,
+            completedThisWeek,
+            completedEarlierThisWeek,
+            frequency: habit.frequency,
+            shouldPreventToggle: (habit.frequency.toLowerCase() === 'weekly' || habit.frequency.toLowerCase() === 'monthly') && completedThisWeek && !completed
+          })
+          // Prevent toggling if completed this week/month but not today (for weekly/monthly habits)
+          // Allow toggling if completed today (even if it's a weekly/monthly habit)
+          if ((habit.frequency.toLowerCase() === 'weekly' || habit.frequency.toLowerCase() === 'monthly') && completedThisWeek && !completed) {
+            console.log(`🚫 [CHECKBOX] Preventing toggle for ${habit.title} - completed this ${habit.frequency.toLowerCase()} but not today`)
             return
           }
+          console.log(`✅ [CHECKBOX] Allowing toggle for ${habit.title}`)
           onToggle(habit.id)
         }}
         aria-label={`${completed ? 'Unmark' : 'Mark'} ${habit.title} as ${completed ? 'incomplete' : 'complete'}`}
       >
-        {habit.frequency.toLowerCase() === 'weekly' && completedThisWeek ? (
-          // Weekly completed icon - consistent with other Lucide icons
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <Circle size={24} fill={theme.colors.success} color={theme.colors.success} />
-            <CheckCircle 
-              size={16} 
-              style={{ 
-                position: 'absolute', 
-                top: '4px', 
-                left: '4px',
-                color: 'white'
-              }} 
-            />
-          </div>
-        ) : completed ? (
+        {(completed || (habit.frequency.toLowerCase() === 'weekly' && completedThisWeek) || (habit.frequency.toLowerCase() === 'monthly' && completedThisWeek)) ? (
           <CheckCircle size={24} />
         ) : (
           <Circle size={24} />
@@ -619,13 +708,8 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
         <HabitTitle 
           $completed={completed}
           style={{
-            color: habit.frequency.toLowerCase() === 'weekly' && completedThisWeek 
-              ? theme.colors.success 
-              : completed 
-                ? theme.colors.text.disabled 
-                : theme.colors.text.primary,
-            textDecoration: completed ? 'line-through' : 'none',
-            opacity: habit.frequency.toLowerCase() === 'weekly' && completedThisWeek ? 0.8 : 1
+            color: completed ? theme.colors.text.disabled : theme.colors.text.primary,
+            textDecoration: completed ? 'line-through' : 'none'
           }}
         >
           {habit.title}
