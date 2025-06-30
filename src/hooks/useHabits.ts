@@ -292,7 +292,10 @@ export function useHabits() {
 
   // Fetch habits from API if user is authenticated
   const fetchHabits = async () => {
-    if (!session?.user) return
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) return
 
     setLoading(true)
     setError(null)
@@ -381,10 +384,19 @@ export function useHabits() {
   // Create a new habit
   const createHabit = async (habitData: { title: string; category: string; frequency: string }) => {
     console.log('🔍 [useHabits] createHabit called with:', habitData)
-    console.log('🔍 [useHabits] Session status:', { hasSession: !!session?.user, email: session?.user?.email })
+    console.log('🔍 [useHabits] Session status:', { 
+      hasSession: !!session, 
+      hasUser: !!session?.user, 
+      email: session?.user?.email,
+      sessionStatus: status,
+      sessionData: session
+    })
     
-    if (!session?.user) {
-      console.log('👤 [useHabits] No session, creating habit in local storage')
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) {
+      console.log('👤 [useHabits] No valid session, creating habit in local storage')
       // For non-authenticated users, use local state
       const newHabit: Habit = {
         id: Date.now().toString(),
@@ -445,8 +457,11 @@ export function useHabits() {
       sessionStatus: status
     })
     
-    if (!session?.user) {
-      console.log('No session, using local storage logic')
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) {
+      console.log('No valid session, using local storage logic')
       // For non-authenticated users, use local state logic
       const updatedHabits = habits.map(habit => {
         if (habit.id === habitId) {
@@ -495,7 +510,7 @@ export function useHabits() {
       return
     }
 
-    console.log('Session exists, making API call')
+    console.log('Valid session exists, making API call')
     setLoading(true)
     setError(null)
 
@@ -659,7 +674,10 @@ export function useHabits() {
 
   // Delete habit
   const deleteHabit = async (habitId: string) => {
-    if (!session?.user) {
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) {
       const updatedHabits = habits.filter(habit => habit.id !== habitId)
       setHabits(updatedHabits)
       localStorage.setItem('routinely-habits', JSON.stringify(updatedHabits))
@@ -689,7 +707,10 @@ export function useHabits() {
 
   // Create sample habits for new users
   const createSampleHabits = async () => {
-    if (!session?.user) return
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) return
 
     try {
       const response = await fetch('/api/habits/seed', {
@@ -770,7 +791,10 @@ export function useHabits() {
   useEffect(() => {
     if (status === 'loading') return // Still loading session
 
-    if (session?.user) {
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+
+    if (hasValidSession) {
       // User is authenticated - ONLY use database
       // Check if there's localStorage data to migrate
       const checkForMigration = async () => {
@@ -836,10 +860,13 @@ export function useHabits() {
 
   // Clear migration state when user signs out
   useEffect(() => {
-    if (!session?.user) {
+    // Check if we have a valid authenticated session
+    const hasValidSession = session?.user?.email && status === 'authenticated'
+    
+    if (!hasValidSession) {
       setMigrationInProgress(false)
     }
-  }, [session])
+  }, [session, status])
 
   // Refetch function that works for both authenticated and non-authenticated users
   const refetch = async () => {
