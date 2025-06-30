@@ -112,19 +112,19 @@ export async function GET(request: NextRequest) {
 
     if (action === 'list') {
       return NextResponse.json({
-        scenarios: Object.keys(TEST_SCENARIOS).map(key => ({
+        scenarios: Object.entries(TEST_SCENARIOS).map(([key, scenario]) => ({
           key,
-          ...TEST_SCENARIOS[key]
+          ...scenario
         }))
       })
     }
 
     if (action === 'setup' && scenario) {
-      const testScenario = TEST_SCENARIOS[scenario]
-      if (!testScenario) {
+      if (!(scenario in TEST_SCENARIOS)) {
         return NextResponse.json({ error: 'Invalid scenario' }, { status: 400 })
       }
-
+      
+      const testScenario = TEST_SCENARIOS[scenario as keyof typeof TEST_SCENARIOS]
       console.log(`🚀 [DEBUG] Setting up scenario: ${scenario}`)
       
       // First find the user by email
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
         where: {
           userId: user.id,
           title: {
-            in: testScenario.habits.map(h => h.title)
+            in: testScenario.habits.map((h: { title: string }) => h.title)
           }
         }
       })
@@ -215,16 +215,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'inspect' && scenario) {
-      const testScenario = TEST_SCENARIOS[scenario]
-      if (!testScenario) {
+      if (!(scenario in TEST_SCENARIOS)) {
         return NextResponse.json({ error: 'Invalid scenario' }, { status: 400 })
       }
+      
+      const testScenario = TEST_SCENARIOS[scenario as keyof typeof TEST_SCENARIOS]
 
       const habits = await prisma.habit.findMany({
         where: {
           userId: session.user.email,
           title: {
-            in: testScenario.habits.map(h => h.title)
+            in: testScenario.habits.map((h: any) => h.title)
           }
         },
         include: {
