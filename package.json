@@ -16,7 +16,9 @@
     "db:studio": "prisma studio",
     "test:daily-check": "node scripts/test-daily-check.js",
     "setup:supabase": "node scripts/setup-supabase.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:habit-creation": "node scripts/test-habit-creation.js",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

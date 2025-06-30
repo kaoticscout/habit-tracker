@@ -542,14 +542,26 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
     setSelectedHabit(value)
   }
 
-  const handleSave = () => {
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log('🔍 [CreateHabitModal] handleSave called with:', {
+      selectedHabit,
+      selectedCategory,
+      selectedFrequency,
+      selectedCustomFrequency,
+      showCustomInput,
+      customHabitText
+    })
+    
     if (selectedHabit) {
       const frequency = selectedFrequency === 'custom' ? selectedCustomFrequency : selectedFrequency
-      onSave({
+      const habitData = {
         title: selectedHabit,
         category: selectedCategory,
         frequency: frequency,
-      })
+      }
+      console.log('💾 [CreateHabitModal] Calling onSave with:', habitData)
+      onSave(habitData)
       onClose()
       setSelectedCategory('')
       setSelectedHabit('')
@@ -557,6 +569,8 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
       setSelectedCustomFrequency('')
       setShowCustomInput(false)
       setCustomHabitText('')
+    } else {
+      console.log('❌ [CreateHabitModal] No habit selected, cannot save')
     }
   }
 
@@ -572,7 +586,7 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
           </CloseButton>
         </Header>
 
-        <Form>
+        <Form onSubmit={handleSave}>
           <Label>Select a category</Label>
           <CategoryGrid>
             {categories.map((category) => {
@@ -659,7 +673,7 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
         </Form>
 
         <CreateButton 
-          onClick={handleSave}
+          type="submit"
           disabled={!selectedHabit || (selectedFrequency === 'custom' && !selectedCustomFrequency)}
         >
           {editingHabit ? 'Update Habit' : 'Create Habit'}

@@ -380,7 +380,11 @@ export function useHabits() {
 
   // Create a new habit
   const createHabit = async (habitData: { title: string; category: string; frequency: string }) => {
+    console.log('🔍 [useHabits] createHabit called with:', habitData)
+    console.log('🔍 [useHabits] Session status:', { hasSession: !!session?.user, email: session?.user?.email })
+    
     if (!session?.user) {
+      console.log('👤 [useHabits] No session, creating habit in local storage')
       // For non-authenticated users, use local state
       const newHabit: Habit = {
         id: Date.now().toString(),
@@ -394,9 +398,11 @@ export function useHabits() {
       const updatedHabits = [...habits, newHabit]
       setHabits(updatedHabits)
       localStorage.setItem('routinely-habits', JSON.stringify(updatedHabits))
+      console.log('✅ [useHabits] Habit created in local storage:', newHabit)
       return newHabit
     }
 
+    console.log('🌐 [useHabits] Creating habit via API...')
     setLoading(true)
     setError(null)
 
@@ -409,16 +415,21 @@ export function useHabits() {
         body: JSON.stringify(habitData),
       })
 
+      console.log('📡 [useHabits] API response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to create habit')
+        const errorText = await response.text()
+        console.error('❌ [useHabits] API error response:', errorText)
+        throw new Error(`Failed to create habit: ${response.status} ${errorText}`)
       }
 
       const newHabit = await response.json()
+      console.log('✅ [useHabits] Habit created via API:', newHabit)
       setHabits(prev => [...prev, newHabit])
       return newHabit
     } catch (err) {
+      console.error('💥 [useHabits] Error creating habit:', err)
       setError(err instanceof Error ? err.message : 'Failed to create habit')
-      console.error('Error creating habit:', err)
       throw err
     } finally {
       setLoading(false)

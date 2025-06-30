@@ -876,18 +876,21 @@ export default function DashboardPage() {
   }
 
   const handleSaveHabit = async (habit: { title: string; category: string; frequency: string }) => {
+    console.log('🔍 [Dashboard] handleSaveHabit called with:', habit)
     try {
       if (editingHabit) {
         // Update existing habit - TODO: Implement update API
         console.log('Update habit not implemented yet')
       } else {
         // Create new habit
-        await createHabit(habit)
+        console.log('💾 [Dashboard] Creating new habit...')
+        const result = await createHabit(habit)
+        console.log('✅ [Dashboard] Habit created successfully:', result)
       }
       setIsModalOpen(false)
       setEditingHabit(null)
     } catch (error) {
-      console.error('Error saving habit:', error)
+      console.error('❌ [Dashboard] Error saving habit:', error)
     }
   }
 
