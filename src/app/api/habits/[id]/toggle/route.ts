@@ -192,6 +192,113 @@ const calculateHabitStreaks = async (habitId: string, userId: string, frequency:
   }
 }
 
+// Helper function to calculate intuitive streak impact
+const calculateIntuitiveStreakImpact = async (habitId: string, userId: string, frequency: string, isTodayCompleted: boolean) => {
+  console.log(`🧮 [INTUITIVE] Starting intuitive streak calculation for habit ${habitId}`)
+  
+  const logs = await prisma.habitLog.findMany({
+    where: {
+      habitId,
+      userId
+    },
+    orderBy: {
+      date: 'desc'
+    }
+  })
+  
+  console.log(`🧮 [INTUITIVE] Found ${logs.length} logs for habit`)
+  
+  if (frequency === 'daily') {
+    // Calculate yesterday's streak (excluding today)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    
+    console.log(`🧮 [INTUITIVE] Calculating yesterday's streak from ${yesterday.toISOString()}`)
+    
+    let yesterdayStreak = 0
+    let currentDate = new Date(yesterday)
+    
+    while (true) {
+      currentDate.setHours(0, 0, 0, 0)
+      const log = logs.find(l => {
+        const logDate = new Date(l.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === currentDate.getTime()
+      })
+      
+      console.log(`🧮 [INTUITIVE] Checking ${currentDate.toISOString()}: ${log ? (log.completed ? '✅' : '❌') : 'no log'}`)
+      
+      if (!log || !log.completed) {
+        console.log(`🧮 [INTUITIVE] Breaking yesterday's streak at ${currentDate.toISOString()}`)
+        break
+      }
+      
+      yesterdayStreak++
+      console.log(`🧮 [INTUITIVE] Yesterday's streak increased to ${yesterdayStreak}`)
+      currentDate.setDate(currentDate.getDate() - 1)
+    }
+    
+    console.log(`🧮 [INTUITIVE] Yesterday's streak: ${yesterdayStreak}`)
+    
+    // Today's impact: if completed, add 1 to yesterday's streak; if not, show yesterday's streak
+    const finalStreak = isTodayCompleted ? yesterdayStreak + 1 : yesterdayStreak
+    console.log(`🧮 [INTUITIVE] Final intuitive streak: ${finalStreak} (yesterday: ${yesterdayStreak}, today: ${isTodayCompleted ? '+1' : '+0'})`)
+    
+    return finalStreak
+  } else if (frequency === 'weekly') {
+    // For weekly habits, use the same logic but for weeks
+    const getWeekStart = (date: Date) => {
+      const d = new Date(date)
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      d.setDate(diff)
+      d.setHours(0, 0, 0, 0)
+      return d
+    }
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const thisWeekStart = getWeekStart(today)
+    const lastWeekStart = new Date(thisWeekStart)
+    lastWeekStart.setDate(thisWeekStart.getDate() - 7)
+    
+    console.log(`🧮 [INTUITIVE] Calculating last week's streak from ${lastWeekStart.toISOString()}`)
+    
+    let lastWeekStreak = 0
+    let currentWeekStart = new Date(lastWeekStart)
+    
+    while (true) {
+      const weekLogs = logs.filter(log => {
+        const logWeekStart = getWeekStart(new Date(log.date))
+        return logWeekStart.getTime() === currentWeekStart.getTime() && log.completed
+      })
+      
+      console.log(`🧮 [INTUITIVE] Checking week ${currentWeekStart.toISOString()}: ${weekLogs.length} completed logs`)
+      
+      if (weekLogs.length === 0) {
+        console.log(`🧮 [INTUITIVE] Breaking last week's streak at ${currentWeekStart.toISOString()}`)
+        break
+      }
+      
+      lastWeekStreak++
+      console.log(`🧮 [INTUITIVE] Last week's streak increased to ${lastWeekStreak}`)
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7)
+    }
+    
+    console.log(`🧮 [INTUITIVE] Last week's streak: ${lastWeekStreak}`)
+    
+    // This week's impact: if completed, add 1 to last week's streak; if not, show last week's streak
+    const finalStreak = isTodayCompleted ? lastWeekStreak + 1 : lastWeekStreak
+    console.log(`🧮 [INTUITIVE] Final intuitive streak: ${finalStreak} (last week: ${lastWeekStreak}, this week: ${isTodayCompleted ? '+1' : '+0'})`)
+    
+    return finalStreak
+  }
+  
+  return 0
+}
+
 export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
     console.log(`🔄 [TOGGLE] Starting toggle for habit ${params.id}`)
@@ -333,22 +440,27 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.log(`🧮 [TOGGLE] Log completed state: ${log.completed}`)
     console.log(`🧮 [TOGGLE] Habit current streaks before update: current=${habit.currentStreak}, best=${habit.bestStreak}`)
     
-    const streaks = await calculateHabitStreaks(params.id, user.id, habit.frequency)
+    // Use the new intuitive streak calculation
+    const newCurrentStreak = await calculateIntuitiveStreakImpact(params.id, user.id, habit.frequency, log.completed)
     
-    console.log(`🧮 [TOGGLE] Calculated new streaks: current=${streaks.currentStreak}, best=${streaks.bestStreak}`)
+    // For best streak, we still need to calculate the full streak to see if we beat the record
+    const fullStreakCalculation = await calculateHabitStreaks(params.id, user.id, habit.frequency)
+    const newBestStreak = Math.max(habit.bestStreak || 0, fullStreakCalculation.bestStreak)
+    
+    console.log(`🧮 [TOGGLE] Calculated new streaks: current=${newCurrentStreak}, best=${newBestStreak}`)
     
     // Update habit with new streak values
     try {
       const updatedHabit = await prisma.habit.update({
         where: { id: params.id },
         data: {
-          currentStreak: streaks.currentStreak,
-          bestStreak: Math.max(habit.bestStreak || 0, streaks.bestStreak),
+          currentStreak: newCurrentStreak,
+          bestStreak: newBestStreak,
           updatedAt: new Date()
         }
       })
       
-      console.log(`📈 [TOGGLE] Updated streaks for ${habit.title}: ${habit.currentStreak || 0} → ${streaks.currentStreak} (best: ${habit.bestStreak || 0} → ${Math.max(habit.bestStreak || 0, streaks.bestStreak)})`)
+      console.log(`📈 [TOGGLE] Updated streaks for ${habit.title}: ${habit.currentStreak || 0} → ${newCurrentStreak} (best: ${habit.bestStreak || 0} → ${newBestStreak})`)
       console.log(`🧮 [TOGGLE] Updated habit streaks in database: current=${updatedHabit.currentStreak}, best=${updatedHabit.bestStreak}`)
     } catch (error) {
       console.log(`⚠️ [TOGGLE] Could not update streak columns for ${habit.title}:`, error)
@@ -358,16 +470,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       id: log.id,
       completed: log.completed,
       date: log.date.toISOString(),
-      currentStreak: streaks.currentStreak,
-      bestStreak: Math.max(habit.bestStreak || 0, streaks.bestStreak)
+      currentStreak: newCurrentStreak,
+      bestStreak: newBestStreak
     })
 
     return NextResponse.json({
       success: true,
       completed: log.completed,
       date: log.date,
-      currentStreak: streaks.currentStreak,
-      bestStreak: Math.max(habit.bestStreak || 0, streaks.bestStreak)
+      currentStreak: newCurrentStreak,
+      bestStreak: newBestStreak
     })
   } catch (error) {
     console.error('💥 [TOGGLE] Error toggling habit:', error)

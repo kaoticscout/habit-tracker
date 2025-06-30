@@ -149,6 +149,8 @@ export async function GET(request: NextRequest) {
       // Create new test habits
       const createdHabits = []
       for (const habitData of testScenario.habits) {
+        console.log(`🔍 [DEBUG] Creating habit: ${habitData.title}`)
+        
         const habit = await prisma.habit.create({
           data: {
             title: habitData.title,
@@ -158,8 +160,12 @@ export async function GET(request: NextRequest) {
           }
         })
 
+        console.log(`✅ [DEBUG] Created habit with ID: ${habit.id}`)
+
         // Create logs
+        console.log(`📝 [DEBUG] Creating ${habitData.logs.length} logs for habit`)
         for (const logData of habitData.logs) {
+          console.log(`📝 [DEBUG] Creating log: ${logData.date} (completed: ${logData.completed})`)
           await prisma.habitLog.create({
             data: {
               habitId: habit.id,
@@ -171,20 +177,32 @@ export async function GET(request: NextRequest) {
         }
 
         // Calculate and update initial streak
+        console.log(`🔍 [DEBUG] Calculating initial streak for habit`)
         const logs = await prisma.habitLog.findMany({
           where: { habitId: habit.id },
           orderBy: { date: 'desc' }
         })
 
+        console.log(`📋 [DEBUG] Found ${logs.length} logs:`, logs.map(l => ({
+          date: l.date,
+          completed: l.completed
+        })))
+
         const targetDate = new Date()
+        console.log(`📅 [DEBUG] Target date for streak calculation: ${targetDate.toISOString()}`)
+        
         const streak = habitData.frequency === 'daily' 
           ? calculateDailyStreak(logs, targetDate)
           : calculateWeeklyStreak(logs, targetDate)
+
+        console.log(`📊 [DEBUG] Calculated initial streak: ${streak}`)
 
         await prisma.habit.update({
           where: { id: habit.id },
           data: { currentStreak: streak }
         })
+
+        console.log(`✅ [DEBUG] Updated habit streak to: ${streak}`)
 
         createdHabits.push(habit)
       }
@@ -263,6 +281,16 @@ export async function GET(request: NextRequest) {
         ? calculateDailyStreak(habit.logs, targetDate)
         : calculateWeeklyStreak(habit.logs, targetDate)
 
+      console.log(`🔍 [DEBUG] Simulate toggle - Before toggle:`, {
+        habitId: habit.id,
+        habitTitle: habit.title,
+        testDate: date,
+        logsCount: habit.logs.length,
+        logs: habit.logs.map(l => ({ date: l.date, completed: l.completed })),
+        oldStreak,
+        frequency: habit.frequency
+      })
+
       // Simulate the toggle by creating/updating a log for the test date
       const testDate = new Date(date)
       const existingLog = habit.logs.find(log => {
@@ -270,12 +298,20 @@ export async function GET(request: NextRequest) {
         return logDate.toISOString().split('T')[0] === testDate.toISOString().split('T')[0]
       })
 
+      console.log(`🔍 [DEBUG] Found existing log for test date:`, {
+        testDate: testDate.toISOString().split('T')[0],
+        existingLog: existingLog ? { date: existingLog.date, completed: existingLog.completed } : null
+      })
+
+      let newCompletedStatus = true
       if (existingLog) {
         // Toggle the existing log
+        newCompletedStatus = !existingLog.completed
         await prisma.habitLog.update({
           where: { id: existingLog.id },
-          data: { completed: !existingLog.completed }
+          data: { completed: newCompletedStatus }
         })
+        console.log(`🔄 [DEBUG] Toggled existing log from ${existingLog.completed} to ${newCompletedStatus}`)
       } else {
         // Create a new log for the test date
         await prisma.habitLog.create({
@@ -286,17 +322,43 @@ export async function GET(request: NextRequest) {
             completed: true
           }
         })
+        console.log(`➕ [DEBUG] Created new log for test date with completed: true`)
       }
 
-      // Get updated logs and calculate new streak
+      // Get updated logs and calculate new streak using intuitive calculation
       const updatedLogs = await prisma.habitLog.findMany({
         where: { habitId: habit.id },
         orderBy: { date: 'desc' }
       })
 
-      const newStreak = habit.frequency === 'daily' 
-        ? calculateDailyStreak(updatedLogs, targetDate)
-        : calculateWeeklyStreak(updatedLogs, targetDate)
+      let newStreak: number
+      if (habit.frequency === 'daily') {
+        newStreak = calculateIntuitiveStreak(updatedLogs, targetDate, newCompletedStatus)
+      } else if (habit.frequency === 'weekly') {
+        // For weekly habits, check if this week has any completed logs
+        const thisWeekStart = getWeekStart(targetDate)
+        const thisWeekEnd = new Date(thisWeekStart)
+        thisWeekEnd.setDate(thisWeekStart.getDate() + 6)
+        
+        const thisWeekLogs = updatedLogs.filter(log => {
+          const logDate = new Date(log.date)
+          return logDate >= thisWeekStart && logDate <= thisWeekEnd
+        })
+        
+        const isThisWeekCompleted = thisWeekLogs.some(log => log.completed)
+        newStreak = calculateIntuitiveWeeklyStreak(updatedLogs, targetDate, isThisWeekCompleted)
+      } else {
+        // Fallback to old calculation for other frequencies
+        newStreak = calculateWeeklyStreak(updatedLogs, targetDate)
+      }
+
+      console.log(`🔍 [DEBUG] Simulate toggle - After toggle:`, {
+        updatedLogsCount: updatedLogs.length,
+        updatedLogs: updatedLogs.map(l => ({ date: l.date, completed: l.completed })),
+        newStreak,
+        change: newStreak - oldStreak,
+        todayCompleted: newCompletedStatus
+      })
 
       // Update the habit's streak
       await prisma.habit.update({
@@ -308,7 +370,8 @@ export async function GET(request: NextRequest) {
         details: {
           oldStreak,
           newStreak,
-          change: newStreak - oldStreak
+          change: newStreak - oldStreak,
+          todayCompleted: newCompletedStatus
         }
       })
     }
@@ -330,22 +393,66 @@ function calculateDailyStreak(logs: any[], targetDate: Date): number {
   let streak = 0
   let currentDate = new Date(targetDate)
   
+  console.log(`🔍 [DEBUG] Starting streak calculation from ${targetDateStr}`)
+  
   while (true) {
     const dateStr = currentDate.toISOString().split('T')[0]
-    const log = logs.find(l => l.date === dateStr)
+    const log = logs.find(l => l.date.toISOString().split('T')[0] === dateStr)
     
     console.log(`🔍 [DEBUG] Checking ${dateStr}: ${log ? (log.completed ? '✅' : '❌') : 'no log'}`)
     
     if (!log || !log.completed) {
+      console.log(`🔍 [DEBUG] Breaking streak at ${dateStr} - no log or not completed`)
       break
     }
     
     streak++
+    console.log(`📊 [DEBUG] Streak increased to ${streak} for ${dateStr}`)
     currentDate.setDate(currentDate.getDate() - 1)
   }
   
   console.log(`📊 [DEBUG] Final daily streak: ${streak}`)
   return streak
+}
+
+function calculateIntuitiveStreak(logs: any[], targetDate: Date, isTodayCompleted: boolean): number {
+  console.log(`🔍 [DEBUG] Calculating intuitive streak for ${logs.length} logs`)
+  
+  const targetDateStr = targetDate.toISOString().split('T')[0]
+  console.log(`📅 [DEBUG] Target date: ${targetDateStr}, Today completed: ${isTodayCompleted}`)
+  
+  // Calculate yesterday's streak (excluding today)
+  const yesterday = new Date(targetDate)
+  yesterday.setDate(yesterday.getDate() - 1)
+  
+  let yesterdayStreak = 0
+  let currentDate = new Date(yesterday)
+  
+  console.log(`🔍 [DEBUG] Calculating yesterday's streak from ${yesterday.toISOString().split('T')[0]}`)
+  
+  while (true) {
+    const dateStr = currentDate.toISOString().split('T')[0]
+    const log = logs.find(l => l.date.toISOString().split('T')[0] === dateStr)
+    
+    console.log(`🔍 [DEBUG] Checking ${dateStr}: ${log ? (log.completed ? '✅' : '❌') : 'no log'}`)
+    
+    if (!log || !log.completed) {
+      console.log(`🔍 [DEBUG] Breaking yesterday's streak at ${dateStr} - no log or not completed`)
+      break
+    }
+    
+    yesterdayStreak++
+    console.log(`📊 [DEBUG] Yesterday's streak increased to ${yesterdayStreak} for ${dateStr}`)
+    currentDate.setDate(currentDate.getDate() - 1)
+  }
+  
+  console.log(`📊 [DEBUG] Yesterday's streak: ${yesterdayStreak}`)
+  
+  // Today's impact: if completed, add 1 to yesterday's streak; if not, show yesterday's streak
+  const finalStreak = isTodayCompleted ? yesterdayStreak + 1 : yesterdayStreak
+  console.log(`📊 [DEBUG] Final intuitive streak: ${finalStreak} (yesterday: ${yesterdayStreak}, today: ${isTodayCompleted ? '+1' : '+0'})`)
+  
+  return finalStreak
 }
 
 function calculateWeeklyStreak(logs: any[], targetDate: Date): number {
@@ -388,4 +495,54 @@ function getWeekStart(date: Date): Date {
   d.setDate(diff)
   d.setHours(0, 0, 0, 0)
   return d
+}
+
+function calculateIntuitiveWeeklyStreak(logs: any[], targetDate: Date, isThisWeekCompleted: boolean): number {
+  console.log(`🔍 [DEBUG] Calculating intuitive weekly streak for ${logs.length} logs`)
+  
+  const targetDateStr = targetDate.toISOString().split('T')[0]
+  console.log(`📅 [DEBUG] Target date: ${targetDateStr}, This week completed: ${isThisWeekCompleted}`)
+  
+  // Calculate last week's streak (excluding this week)
+  const thisWeekStart = getWeekStart(targetDate)
+  const lastWeekStart = new Date(thisWeekStart)
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7)
+  
+  console.log(`🔍 [DEBUG] Calculating last week's streak from ${lastWeekStart.toISOString().split('T')[0]}`)
+  
+  let lastWeekStreak = 0
+  let currentWeekStart = new Date(lastWeekStart)
+  
+  while (true) {
+    const weekEnd = new Date(currentWeekStart)
+    weekEnd.setDate(currentWeekStart.getDate() + 6)
+    
+    const weekLogs = logs.filter(log => {
+      const logDate = new Date(log.date)
+      return logDate >= currentWeekStart && logDate <= weekEnd
+    })
+    
+    const hasCompletion = weekLogs.some(log => log.completed)
+    
+    const weekStartStr = currentWeekStart.toISOString().split('T')[0]
+    const weekEndStr = weekEnd.toISOString().split('T')[0]
+    console.log(`🔍 [DEBUG] Checking week ${weekStartStr} to ${weekEndStr}: ${hasCompletion ? '✅' : '❌'} (${weekLogs.length} logs)`)
+    
+    if (!hasCompletion) {
+      console.log(`🔍 [DEBUG] Breaking last week's streak at ${weekStartStr} - no completion`)
+      break
+    }
+    
+    lastWeekStreak++
+    console.log(`📊 [DEBUG] Last week's streak increased to ${lastWeekStreak} for week ${weekStartStr}`)
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7)
+  }
+  
+  console.log(`📊 [DEBUG] Last week's streak: ${lastWeekStreak}`)
+  
+  // This week's impact: if completed, add 1 to last week's streak; if not, show last week's streak
+  const finalStreak = isThisWeekCompleted ? lastWeekStreak + 1 : lastWeekStreak
+  console.log(`📊 [DEBUG] Final intuitive weekly streak: ${finalStreak} (last week: ${lastWeekStreak}, this week: ${isThisWeekCompleted ? '+1' : '+0'})`)
+  
+  return finalStreak
 } 

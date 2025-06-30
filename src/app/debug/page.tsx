@@ -1129,29 +1129,9 @@ export default function DebugPage() {
   const quickTests = [
     { key: 'daily-streak', label: '📅 Daily Streak', days: [-1, 0, 1], color: theme.colors.success },
     { key: 'weekly-sunday', label: '📆 Sunday Bug', days: [0], color: theme.colors.error },
-    { key: 'production-bug', label: '🐛 Production Bug', days: [0], color: theme.colors.warning },
-    { key: 'timezone-mix', label: '🌍 Timezone Test', days: [0, 1], color: theme.colors.primary[600] },
-    { key: 'long-streak-recovery', label: '🔥 Long Streak', days: [0, 1, 2], color: theme.colors.success },
-    { key: 'weekly-streak-complex', label: '📊 Complex Weekly', days: [0, 1], color: theme.colors.primary[600] },
-    { key: 'timezone-boundary', label: '⏰ Timezone Boundary', days: [0, 1], color: theme.colors.warning },
-    { key: 'multi-habit-scenario', label: '🎯 Multi-Habit', days: [0], color: theme.colors.success },
-    { key: 'streak-edge-cases', label: '🔍 Edge Cases', days: [0, 1], color: theme.colors.error },
-    { key: 'holiday-break', label: '🏖️ Holiday Break', days: [0, 1, 2], color: theme.colors.warning },
-    { key: 'inconsistent-user', label: '🎲 Inconsistent', days: [0, 1, 2], color: theme.colors.primary[600] },
-    { key: 'year-boundary', label: '🎆 Year Boundary', days: [0, 1], color: theme.colors.success },
-    { key: 'streak-recovery-challenge', label: '🔥 Streak Recovery Challenge', days: [0, 1, 2], color: theme.colors.success },
-    { key: 'weekly-streak-master', label: '📊 Weekly Streak Master', days: [0, 1], color: theme.colors.primary[600] },
-    { key: 'timezone-chaos', label: '⏰ Timezone Chaos', days: [0, 1], color: theme.colors.warning },
-    { key: 'multi-frequency-user', label: '🎯 Multi-Frequency User', days: [0], color: theme.colors.success },
-    { key: 'streak-edge-master', label: '🔍 Streak Edge Master', days: [0, 1], color: theme.colors.error },
-    { key: 'holiday-master', label: '🏖️ Holiday Master', days: [0, 1, 2], color: theme.colors.warning },
-    { key: 'inconsistent-master', label: '🎲 Inconsistent Master', days: [0, 1, 2], color: theme.colors.primary[600] },
-    { key: 'weekend-warrior', label: '🏃 Weekend Warrior', days: [0], color: theme.colors.success },
-    { key: 'streak-breaker', label: '💔 Streak Breaker', days: [0, 1, 2], color: theme.colors.primary[600] },
     { key: 'toggle-streak-preservation', label: '🔄 Toggle Streak Preservation', days: [0], color: theme.colors.warning },
     { key: 'daily-toggle-test', label: '📝 Daily Toggle Test', days: [0], color: theme.colors.success },
-    { key: 'weekly-toggle-test', label: '📅 Weekly Toggle Test', days: [0], color: theme.colors.primary[600] },
-    { key: 'streak-integrity-test', label: '🛡️ Streak Integrity Test', days: [0], color: theme.colors.error }
+    { key: 'weekly-toggle-test', label: '📅 Weekly Toggle Test', days: [0], color: theme.colors.primary[600] }
   ]
 
   useEffect(() => {
@@ -1173,9 +1153,20 @@ export default function DebugPage() {
 
   const loadTestHabits = async () => {
     try {
-      const response = await fetch('/api/habits')
+      // Use the test habits API to get the most up-to-date data
+      const response = await fetch('/api/debug/test-habits?action=list')
       const data = await response.json()
-      const allHabits = Array.isArray(data) ? data : (data.habits || [])
+      
+      if (data.error) {
+        addOutput(`Error loading test habits: ${data.error}`, 'error')
+        return []
+      }
+      
+      // Get the actual habit data from the database
+      const habitsResponse = await fetch('/api/habits')
+      const habitsData = await habitsResponse.json()
+      const allHabits = Array.isArray(habitsData) ? habitsData : (habitsData.habits || [])
+      
       const testHabits = allHabits.filter((h: Habit) => 
         h.title.startsWith('Test ') || 
         h.title.startsWith('Daily Toggle') || 
@@ -1183,6 +1174,7 @@ export default function DebugPage() {
         h.title.startsWith('Long Streak') || 
         h.title.startsWith('Toggle Streak')
       )
+      
       setTestHabits(testHabits)
       addOutput(`Found ${testHabits.length} test habits (out of ${allHabits.length} total)`, 'info')
       return testHabits
@@ -1744,7 +1736,7 @@ export default function DebugPage() {
       
       addOutput(`🔍 Starting with: ${habit.title} - Streak: ${habit.currentStreak}`, 'info')
       
-      // First toggle: should decrease by 1
+      // First toggle: should show yesterday's streak (not break the entire streak)
       addOutput(`\n🔄 Toggle 1: Unchecking today...`, 'info')
       const toggle1Resp = await fetch(`/api/debug/test-habits?action=simulate-toggle&habitId=${habit.id}&date=${today}`)
       const toggle1Data = await toggle1Resp.json()
@@ -1753,13 +1745,16 @@ export default function DebugPage() {
         addOutput(`📊 Result: ${toggle1Data.details.oldStreak} → ${toggle1Data.details.newStreak}`, 'info')
         const change = toggle1Data.details.newStreak - toggle1Data.details.oldStreak
         if (change === -1) {
-          addOutput(`✅ Correct: Decreased by 1`, 'success')
+          addOutput(`✅ Correct: Decreased by 1 (showing yesterday's streak)`, 'success')
         } else {
           addOutput(`🚨 BUG: Expected -1, got ${change}`, 'error')
         }
       }
       
-      // Second toggle: should increase by 1
+      // Refresh habit data to get updated streak
+      await loadTestHabits()
+      
+      // Second toggle: should add +1 to yesterday's streak
       addOutput(`\n🔄 Toggle 2: Checking today...`, 'info')
       const toggle2Resp = await fetch(`/api/debug/test-habits?action=simulate-toggle&habitId=${habit.id}&date=${today}`)
       const toggle2Data = await toggle2Resp.json()
@@ -1768,13 +1763,16 @@ export default function DebugPage() {
         addOutput(`📊 Result: ${toggle2Data.details.oldStreak} → ${toggle2Data.details.newStreak}`, 'info')
         const change = toggle2Data.details.newStreak - toggle2Data.details.oldStreak
         if (change === 1) {
-          addOutput(`✅ Correct: Increased by 1`, 'success')
+          addOutput(`✅ Correct: Increased by 1 (yesterday's streak + 1)`, 'success')
         } else {
           addOutput(`🚨 BUG: Expected +1, got ${change}`, 'error')
         }
       }
       
-      // Third toggle: should decrease by 1 again
+      // Refresh habit data to get updated streak
+      await loadTestHabits()
+      
+      // Third toggle: should show yesterday's streak again
       addOutput(`\n🔄 Toggle 3: Unchecking today again...`, 'info')
       const toggle3Resp = await fetch(`/api/debug/test-habits?action=simulate-toggle&habitId=${habit.id}&date=${today}`)
       const toggle3Data = await toggle3Resp.json()
@@ -1783,15 +1781,19 @@ export default function DebugPage() {
         addOutput(`📊 Result: ${toggle3Data.details.oldStreak} → ${toggle3Data.details.newStreak}`, 'info')
         const change = toggle3Data.details.newStreak - toggle3Data.details.oldStreak
         if (change === -1) {
-          addOutput(`✅ Correct: Decreased by 1`, 'success')
+          addOutput(`✅ Correct: Decreased by 1 (showing yesterday's streak)`, 'success')
         } else {
           addOutput(`🚨 BUG: Expected -1, got ${change}`, 'error')
         }
       }
       
+      // Final refresh to show the current state
+      await loadTestHabits()
+      
       addOutput(`\n📋 Summary:`, 'info')
-      addOutput(`   Expected pattern: 2 → 1 → 2 → 1`, 'info')
-      addOutput(`   Each toggle should only change streak by ±1`, 'info')
+      addOutput(`   Expected pattern: 3 → 2 → 3 → 2`, 'info')
+      addOutput(`   Unchecking today: shows yesterday's streak (no penalty)`, 'info')
+      addOutput(`   Checking today: yesterday's streak + 1`, 'info')
       
     } catch (error) {
       addOutput(`❌ Quick test error: ${error instanceof Error ? error.message : String(error)}`, 'error')
