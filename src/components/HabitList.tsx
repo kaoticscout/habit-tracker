@@ -111,17 +111,24 @@ const DragHandle = styled.div`
   }
 `
 
-const Checkbox = styled.button<{ $completed: boolean }>`
+const Checkbox = styled.button<{ $completed: boolean; $completedThisWeek?: boolean }>`
   background: none;
   border: none;
-  cursor: pointer;
-  color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.gray[300]};
+  cursor: ${({ $completedThisWeek }) => $completedThisWeek ? 'not-allowed' : 'pointer'};
+  color: ${({ $completed, $completedThisWeek }) => {
+    if ($completedThisWeek) return 'white'
+    return $completed ? theme.colors.success : theme.colors.gray[300]
+  }};
   margin-right: ${theme.spacing[4]};
   transition: all ${theme.transitions.normal};
+  opacity: ${({ $completedThisWeek }) => $completedThisWeek ? 0.8 : 1};
   
   &:hover {
-    color: ${({ $completed }) => $completed ? theme.colors.success : theme.colors.primary[400]};
-    transform: scale(1.05);
+    color: ${({ $completed, $completedThisWeek }) => {
+      if ($completedThisWeek) return 'white'
+      return $completed ? theme.colors.success : theme.colors.primary[400]
+    }};
+    transform: ${({ $completedThisWeek }) => $completedThisWeek ? 'none' : 'scale(1.05)'};
   }
 `
 
@@ -396,7 +403,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     }
   }, [transform, transition, isDragging])
 
-  const { completed, streak } = useMemo(() => {
+  const { completed, completedThisWeek, streak } = useMemo(() => {
     console.log(`🔄 [MEMO] Calculating status for ${habit.title}`, {
       logsCount: habit.logs.length,
       frequency: habit.frequency,
@@ -405,6 +412,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     })
     
     let isCompletedToday = false
+    let isCompletedThisWeek = false
     
     // Handle different frequencies differently
     if (habit.frequency.toLowerCase() === 'weekly') {
@@ -458,7 +466,10 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       })
       
       console.log(`🗓️ [MEMO] This week's completed logs for ${habit.title}:`, thisWeekLogs.length)
-      isCompletedToday = thisWeekLogs.length > 0
+      isCompletedThisWeek = thisWeekLogs.length > 0
+      
+      // For weekly habits, "completed today" means completed this week
+      isCompletedToday = isCompletedThisWeek
     } else {
       // For daily habits, look for today's specific log
       const today = new Date()
@@ -487,6 +498,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       })
       
       isCompletedToday = todayLog ? todayLog.completed : false
+      isCompletedThisWeek = false // Not applicable for daily habits
     }
     
     // Use stored currentStreak if available, otherwise calculate
@@ -535,6 +547,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     
     console.log(`✅ [MEMO] Result for ${habit.title}:`, {
       completed: isCompletedToday,
+      completedThisWeek: isCompletedThisWeek,
       streak,
       allLogs: habit.logs.map(log => ({ 
         date: new Date(log.date).toISOString(), 
@@ -554,6 +567,7 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
     
     return {
       completed: isCompletedToday,
+      completedThisWeek: isCompletedThisWeek,
       streak
     }
   }, [habit.logs, habit.currentStreak, habit.frequency, habit.lastUpdated])
@@ -570,10 +584,31 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       
       <Checkbox
         $completed={completed}
-        onClick={() => onToggle(habit.id)}
+        $completedThisWeek={completedThisWeek}
+        onClick={() => {
+          // Prevent toggling if completed this week (for weekly habits)
+          if (habit.frequency.toLowerCase() === 'weekly' && completedThisWeek) {
+            return
+          }
+          onToggle(habit.id)
+        }}
         aria-label={`${completed ? 'Unmark' : 'Mark'} ${habit.title} as ${completed ? 'incomplete' : 'complete'}`}
       >
-        {completed ? (
+        {habit.frequency.toLowerCase() === 'weekly' && completedThisWeek ? (
+          // Weekly completed icon - consistent with other Lucide icons
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <Circle size={24} fill={theme.colors.success} color={theme.colors.success} />
+            <CheckCircle 
+              size={16} 
+              style={{ 
+                position: 'absolute', 
+                top: '4px', 
+                left: '4px',
+                color: 'white'
+              }} 
+            />
+          </div>
+        ) : completed ? (
           <CheckCircle size={24} />
         ) : (
           <Circle size={24} />
@@ -581,7 +616,18 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       </Checkbox>
       
       <HabitContent>
-        <HabitTitle $completed={completed}>
+        <HabitTitle 
+          $completed={completed}
+          style={{
+            color: habit.frequency.toLowerCase() === 'weekly' && completedThisWeek 
+              ? theme.colors.success 
+              : completed 
+                ? theme.colors.text.disabled 
+                : theme.colors.text.primary,
+            textDecoration: completed ? 'line-through' : 'none',
+            opacity: habit.frequency.toLowerCase() === 'weekly' && completedThisWeek ? 0.8 : 1
+          }}
+        >
           {habit.title}
         </HabitTitle>
         

@@ -512,11 +512,21 @@ export function useHabits() {
       console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('API error response:', errorText)
+        const errorData = await response.json()
+        console.error('API error response:', errorData)
+        
         if (response.status === 401) {
           throw new Error('Please sign in to save your progress')
         }
+        
+        // Handle weekly habit already completed this week
+        if (response.status === 400 && errorData.completedThisWeek) {
+          console.log('Weekly habit already completed this week:', errorData.message)
+          // Don't throw an error, just show a message to the user
+          setError(errorData.message)
+          return
+        }
+        
         throw new Error(`Failed to toggle habit: ${response.status}`)
       }
 

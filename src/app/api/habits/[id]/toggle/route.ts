@@ -344,6 +344,45 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     console.log(`📋 [TOGGLE] Found habit: ${habit.title} (${habit.frequency})`)
 
+    // For weekly habits, check if already completed this week
+    if (habit.frequency.toLowerCase() === 'weekly') {
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      
+      // Calculate Monday of this week (handle Sunday = 0 case)
+      const dayOfWeek = today.getDay()
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+      startOfWeek.setDate(today.getDate() - daysFromMonday)
+      startOfWeek.setHours(0, 0, 0, 0)
+      
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 6)
+      endOfWeek.setHours(23, 59, 59, 999)
+      
+      // Check if there's already a completed log this week
+      const thisWeekCompletedLog = await prisma.habitLog.findFirst({
+        where: {
+          habitId: params.id,
+          userId: user.id,
+          date: {
+            gte: startOfWeek,
+            lte: endOfWeek
+          },
+          completed: true
+        }
+      })
+      
+      if (thisWeekCompletedLog) {
+        console.log(`🚫 [TOGGLE] Weekly habit ${habit.title} already completed this week, preventing toggle`)
+        return NextResponse.json({ 
+          error: 'Weekly habit already completed this week',
+          message: 'This weekly habit has already been completed for this week. You cannot toggle it until next week.',
+          completed: true,
+          completedThisWeek: true
+        }, { status: 400 })
+      }
+    }
+
     // Parse the date from request body if provided, otherwise use server's today
     let requestBody: { date?: string } = {}
     try {
