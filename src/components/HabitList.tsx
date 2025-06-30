@@ -23,6 +23,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { calculateIntuitiveStreaks } from '../utils/streakCalculation'
 
 interface HabitLog {
   id: string
@@ -587,48 +588,15 @@ const SortableHabitItem = React.memo(function SortableHabitItem({
       isCompletedEarlierThisWeek = false // Not applicable for daily habits
     }
     
-    // Use stored currentStreak if available, otherwise calculate
+    // Use stored currentStreak if available, otherwise calculate using intuitive logic
     let streak: number
     if (typeof habit.currentStreak === 'number') {
       // Use the stored streak value from the habit data
       streak = habit.currentStreak
     } else {
-      // Fallback: calculate streak from logs (for backwards compatibility)
-      streak = 0
-      const sortedLogs = habit.logs
-        .filter(log => log.completed)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      
-      if (sortedLogs.length > 0) {
-        // Start from the most recent completed day
-        let currentDateStr = new Date(sortedLogs[0].date).toISOString().split('T')[0]
-        
-        // If today is completed, start streak from today
-        if (isCompletedToday) {
-          const today = new Date()
-          const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-          currentDateStr = todayOnly.toISOString().split('T')[0]
-          streak = 1
-        }
-        
-              // Count consecutive days backwards using date comparison
-      for (let i = isCompletedToday ? 1 : 0; i < sortedLogs.length; i++) {
-        const logDate = new Date(sortedLogs[i].date)
-        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
-        
-        // Calculate expected date for consecutive day
-        const today = new Date()
-        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const expectedDate = new Date(todayOnly)
-        expectedDate.setDate(todayOnly.getDate() - (isCompletedToday ? i : i + 1))
-        
-        if (logDateOnly.getTime() === expectedDate.getTime()) {
-          streak++
-        } else {
-          break
-        }
-      }
-      }
+      // Fallback: calculate streak using intuitive logic (for backwards compatibility)
+      const calculatedStreaks = calculateIntuitiveStreaks(habit.logs, habit.frequency)
+      streak = calculatedStreaks.currentStreak
     }
     
     console.log(`✅ [MEMO] Result for ${habit.title}:`, {
