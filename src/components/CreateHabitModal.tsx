@@ -670,14 +670,14 @@ export default function CreateHabitModal({ isOpen, onClose, onSave, editingHabit
               </Select>
             </InputGroup>
           )}
-        </Form>
 
-        <CreateButton 
-          type="submit"
-          disabled={!selectedHabit || (selectedFrequency === 'custom' && !selectedCustomFrequency)}
-        >
-          {editingHabit ? 'Update Habit' : 'Create Habit'}
-        </CreateButton>
+          <CreateButton 
+            type="submit"
+            disabled={!selectedHabit || (selectedFrequency === 'custom' && !selectedCustomFrequency)}
+          >
+            {editingHabit ? 'Update Habit' : 'Create Habit'}
+          </CreateButton>
+        </Form>
       </Modal>
     </Overlay>
   )
