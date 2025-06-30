@@ -105,7 +105,8 @@ export async function POST(req: NextRequest) {
     console.log('📋 Session data:', { 
       hasSession: !!session, 
       hasUser: !!session?.user, 
-      email: session?.user?.email 
+      email: session?.user?.email,
+      sessionStatus: session ? 'authenticated' : 'unauthenticated'
     })
     
     if (!session?.user?.email) {
@@ -134,6 +135,58 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('💾 Creating habit in database...')
+    console.log('💾 Database connection test...')
+    
+    // Test database connection first
+    try {
+      await prisma.$queryRaw`SELECT 1 as test`
+      console.log('✅ Database connection test successful')
+    } catch (dbError) {
+      console.error('❌ Database connection test failed:', dbError)
+      throw new Error(`Database connection failed: ${dbError instanceof Error ? dbError.message : String(dbError)}`)
+    }
+    
+    // Test if habits table exists
+    try {
+      const tableExists = await prisma.$queryRaw`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'habits'
+        ) as exists
+      ` as Array<{ exists: boolean }>
+      console.log('📋 Habits table exists:', tableExists[0].exists)
+      
+      if (!tableExists[0].exists) {
+        throw new Error('Habits table does not exist in database')
+      }
+    } catch (tableError) {
+      console.error('❌ Table check failed:', tableError)
+      throw new Error(`Table check failed: ${tableError instanceof Error ? tableError.message : String(tableError)}`)
+    }
+    
+    // Test if required columns exist
+    try {
+      const columns = await prisma.$queryRaw`
+        SELECT column_name
+        FROM information_schema.columns 
+        WHERE table_name = 'habits' 
+        AND table_schema = 'public'
+      ` as Array<{ column_name: string }>
+      const columnNames = columns.map(col => col.column_name)
+      console.log('📊 Available columns:', columnNames)
+      
+      const requiredColumns = ['id', 'title', 'category', 'frequency', 'userId']
+      const missingColumns = requiredColumns.filter(col => !columnNames.includes(col))
+      
+      if (missingColumns.length > 0) {
+        throw new Error(`Missing required columns: ${missingColumns.join(', ')}`)
+      }
+    } catch (columnError) {
+      console.error('❌ Column check failed:', columnError)
+      throw new Error(`Column check failed: ${columnError instanceof Error ? columnError.message : String(columnError)}`)
+    }
+
     const habit = await prisma.habit.create({
       data: {
         title,
@@ -153,8 +206,23 @@ export async function POST(req: NextRequest) {
     console.error('📊 Error details:', {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'No stack trace'
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      code: error instanceof Error ? (error as any).code : 'No error code'
     })
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    
+    // Return more specific error messages for debugging
+    if (error instanceof Error) {
+      if (error.message.includes('Database connection failed')) {
+        return NextResponse.json({ error: 'Database connection error', details: error.message }, { status: 500 })
+      }
+      if (error.message.includes('Table check failed')) {
+        return NextResponse.json({ error: 'Database schema error', details: error.message }, { status: 500 })
+      }
+      if (error.message.includes('Column check failed')) {
+        return NextResponse.json({ error: 'Database schema error', details: error.message }, { status: 500 })
+      }
+    }
+    
+    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 } 
