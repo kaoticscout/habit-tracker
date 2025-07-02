@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -323,6 +323,16 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
   const [currentDate, setCurrentDate] = useState(new Date())
   
   const today = new Date()
+  
+  // Debug: Log when habits change
+  React.useEffect(() => {
+    console.log('📅 [ProgressCalendar] Habits updated:', {
+      totalHabits: habits.length,
+      totalLogs: habits.reduce((sum, habit) => sum + habit.logs.length, 0),
+      completedLogs: habits.reduce((sum, habit) => sum + habit.logs.filter(log => log.completed).length, 0),
+      today: today.toISOString().split('T')[0]
+    })
+  }, [habits, today])
   const currentMonth = currentDate.getMonth()
   const currentYear = currentDate.getFullYear()
   
@@ -373,6 +383,25 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
       monthly: { total: 0, completed: 0, habits: [] }
     }
     
+    // Debug: Log progress calculation for today
+    const isTodayDate = date.getDate() === today.getDate() &&
+                       date.getMonth() === today.getMonth() &&
+                       date.getFullYear() === today.getFullYear()
+    
+    if (isTodayDate) {
+      console.log('📅 [ProgressCalendar] Calculating progress for TODAY:', {
+        date: date.toISOString().split('T')[0],
+        totalHabits: habits.length,
+        habits: habits.map(h => ({
+          id: h.id,
+          title: h.title,
+          frequency: h.frequency,
+          logsCount: h.logs.length,
+          completedLogsCount: h.logs.filter(log => log.completed).length
+        }))
+      })
+    }
+    
     const dayStart = new Date(date)
     dayStart.setHours(0, 0, 0, 0)
     const dayEnd = new Date(date)
@@ -398,6 +427,23 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
     const checkHabitCompletion = (habit: Habit, targetDate: Date) => {
       const frequency = habit.frequency.toLowerCase()
       
+      // Debug: Log completion check for today
+      const isTodayDate = targetDate.getDate() === today.getDate() &&
+                         targetDate.getMonth() === today.getMonth() &&
+                         targetDate.getFullYear() === today.getFullYear()
+      
+      if (isTodayDate) {
+        console.log(`📅 [ProgressCalendar] Checking completion for TODAY - ${habit.title} (${frequency}):`, {
+          habitId: habit.id,
+          frequency,
+          totalLogs: habit.logs.length,
+          logs: habit.logs.map(log => ({
+            date: new Date(log.date).toISOString().split('T')[0],
+            completed: log.completed
+          }))
+        })
+      }
+      
       if (frequency === 'daily') {
         // For daily habits, check exact date match
         const dayLog = habit.logs.find(log => {
@@ -405,7 +451,14 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
           logDate.setHours(0, 0, 0, 0)
           return logDate.getTime() === targetDate.getTime()
         })
-        return dayLog?.completed || false
+        
+        const result = dayLog?.completed || false
+        
+        if (isTodayDate) {
+          console.log(`📅 [ProgressCalendar] Daily habit ${habit.title} completion result:`, result)
+        }
+        
+        return result
       } else if (frequency === 'weekly') {
         // For weekly habits, check if completed any time during the week containing targetDate
         const targetDayStart = new Date(targetDate)

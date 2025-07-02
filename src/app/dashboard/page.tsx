@@ -1006,6 +1006,7 @@ export default function DashboardPage() {
               Each completed day builds momentum toward your goals.
             </CalendarDescription>
             <ProgressCalendar 
+              key={habits.map(h => `${h.id}-${h.logs.length}-${h.logs.filter(log => log.completed).length}`).join('|')}
               habitLogs={habits
                 .flatMap(habit => 
                   habit.logs
