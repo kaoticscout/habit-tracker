@@ -375,6 +375,57 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
     
     // Helper function to check completion for a habit on a specific date
     const checkHabitCompletion = (habit: Habit, targetDate: Date) => {
+      const frequency = habit.frequency.toLowerCase()
+      
+      if (frequency === 'daily') {
+        // For daily habits, check exact date match
+        const dayLog = habit.logs.find(log => {
+          const logDate = new Date(log.date)
+          logDate.setHours(0, 0, 0, 0)
+          return logDate.getTime() === targetDate.getTime()
+        })
+        return dayLog?.completed || false
+      } else if (frequency === 'weekly') {
+        // For weekly habits, check if completed any time during the week containing targetDate
+        const targetDayStart = new Date(targetDate)
+        targetDayStart.setHours(0, 0, 0, 0)
+        
+        // Calculate Monday of the week containing targetDate
+        const dayOfWeek = targetDayStart.getDay()
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // If Sunday, go back 6 days to Monday
+        const weekStart = new Date(targetDayStart)
+        weekStart.setDate(targetDayStart.getDate() - daysFromMonday)
+        weekStart.setHours(0, 0, 0, 0)
+        
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6) // Sunday of this week
+        weekEnd.setHours(23, 59, 59, 999)
+        
+        // Check if there's any completed log during this week
+        const weekLog = habit.logs.find(log => {
+          const logDate = new Date(log.date)
+          return logDate >= weekStart && logDate <= weekEnd && log.completed
+        })
+        
+        return !!weekLog
+      } else if (frequency === 'monthly') {
+        // For monthly habits, check if completed any time during the month containing targetDate
+        const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1)
+        monthStart.setHours(0, 0, 0, 0)
+        
+        const monthEnd = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0)
+        monthEnd.setHours(23, 59, 59, 999)
+        
+        // Check if there's any completed log during this month
+        const monthLog = habit.logs.find(log => {
+          const logDate = new Date(log.date)
+          return logDate >= monthStart && logDate <= monthEnd && log.completed
+        })
+        
+        return !!monthLog
+      }
+      
+      // Default fallback for other frequencies
       const dayLog = habit.logs.find(log => {
         const logDate = new Date(log.date)
         logDate.setHours(0, 0, 0, 0)
@@ -482,7 +533,7 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
       </CalendarHeader>
       
       <SimpleExplanation>
-        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Each row represents habits of that frequency.
+        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Weekly and monthly habits show as completed for their entire period once completed.
       </SimpleExplanation>
       
       <CalendarGrid>
