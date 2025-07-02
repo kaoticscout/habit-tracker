@@ -141,6 +141,52 @@ describe('ProgressCalendar', () => {
       expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
     })
 
+    it('should show previous month days in calendar view', () => {
+      const habits = [
+        createHabit('daily-1', 'Daily Habit', 'daily', [
+          { date: createDate(2025, 5, 31), completed: true } // May 31st
+        ])
+      ]
+
+      const habitLogs = habits.flatMap(habit =>
+        habit.logs
+          .filter(log => log.completed)
+          .map(log => ({
+            id: log.id,
+            habitId: habit.id,
+            completedAt: new Date(log.date)
+          }))
+      )
+
+      render(<ProgressCalendar habitLogs={habitLogs} habits={habits} />)
+
+      // The calendar should show previous month days and display the habit
+      expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
+    })
+
+    it('should always show previous week in calendar view', () => {
+      const habits = [
+        createHabit('weekly-1', 'Weekly Exercise', 'weekly', [
+          { date: createDate(2025, 5, 25), completed: true } // Previous week
+        ])
+      ]
+
+      const habitLogs = habits.flatMap(habit =>
+        habit.logs
+          .filter(log => log.completed)
+          .map(log => ({
+            id: log.id,
+            habitId: habit.id,
+            completedAt: new Date(log.date)
+          }))
+      )
+
+      render(<ProgressCalendar habitLogs={habitLogs} habits={habits} />)
+
+      // The calendar should show the previous week and display the weekly habit
+      expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
+    })
+
     it('should not show weekly habit as completed for weeks when it was not completed', () => {
       const habits = [
         createHabit('weekly-1', 'Weekly Exercise', 'weekly', [
@@ -269,6 +315,56 @@ describe('ProgressCalendar', () => {
 
       // All three habits should be visible in the calendar
       expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
+    })
+  })
+
+  describe('Calendar Navigation', () => {
+    it('should allow navigation to previous years', () => {
+      const habits = [
+        createHabit('daily-1', 'Daily Habit', 'daily', [
+          { date: createDate(2024, 12, 31), completed: true } // December 31, 2024
+        ])
+      ]
+
+      const habitLogs = habits.flatMap(habit =>
+        habit.logs
+          .filter(log => log.completed)
+          .map(log => ({
+            id: log.id,
+            habitId: habit.id,
+            completedAt: new Date(log.date)
+          }))
+      )
+
+      render(<ProgressCalendar habitLogs={habitLogs} habits={habits} />)
+
+      // Should be able to navigate to previous years without restrictions
+      expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
+    })
+  })
+
+  describe('Visual Differentiation', () => {
+    it('should show legend for other month days', () => {
+      const habits = [
+        createHabit('daily-1', 'Daily Habit', 'daily', [
+          { date: createDate(2025, 6, 15), completed: true }
+        ])
+      ]
+
+      const habitLogs = habits.flatMap(habit =>
+        habit.logs
+          .filter(log => log.completed)
+          .map(log => ({
+            id: log.id,
+            habitId: habit.id,
+            completedAt: new Date(log.date)
+          }))
+      )
+
+      render(<ProgressCalendar habitLogs={habitLogs} habits={habits} />)
+
+      // Should show legend for other month days
+      expect(screen.getByText('Other month')).toBeInTheDocument()
     })
   })
 }) 

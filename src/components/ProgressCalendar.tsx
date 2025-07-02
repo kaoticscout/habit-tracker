@@ -125,7 +125,9 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean }>`
     if (!$isCurrentMonth) {
       return `
         color: ${theme.colors.text.disabled};
-        background: transparent;
+        background: ${theme.colors.gray[50]};
+        border: 1px solid ${theme.colors.gray[100]};
+        opacity: 0.7;
       `
     }
     
@@ -329,9 +331,17 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
   // Generate calendar days
   const calendarDays = []
   
-  // Add empty cells for days before first day of month
-  for (let i = 0; i < firstDayWeekday; i++) {
-    calendarDays.push({ date: null, isCurrentMonth: false })
+  // Calculate the start of the calendar view (including previous month)
+  // We want to show the full week that contains the first day of the month
+  // PLUS the previous week to always show last week's progress
+  const calendarStart = new Date(firstDayOfMonth)
+  calendarStart.setDate(firstDayOfMonth.getDate() - firstDayWeekday - 7) // Go back one more week
+  
+  // Add days from previous month to fill the first two weeks (previous week + current week start)
+  for (let i = 0; i < firstDayWeekday + 7; i++) {
+    const date = new Date(calendarStart)
+    date.setDate(calendarStart.getDate() + i)
+    calendarDays.push({ date, isCurrentMonth: false })
   }
   
   // Add days of current month
@@ -340,11 +350,14 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
     calendarDays.push({ date, isCurrentMonth: true })
   }
   
-  // Add empty cells to complete the grid (7 columns)
+  // Add days from next month to complete the last week
   const remainingCells = 7 - (calendarDays.length % 7)
   if (remainingCells < 7) {
-    for (let i = 0; i < remainingCells; i++) {
-      calendarDays.push({ date: null, isCurrentMonth: false })
+    const lastDayOfCurrentMonth = new Date(currentYear, currentMonth, daysInMonth)
+    for (let i = 1; i <= remainingCells; i++) {
+      const date = new Date(lastDayOfCurrentMonth)
+      date.setDate(lastDayOfCurrentMonth.getDate() + i)
+      calendarDays.push({ date, isCurrentMonth: false })
     }
   }
   
@@ -462,7 +475,16 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
     }
   }
   
-  // Calculate stats
+  // Calculate stats for the full calendar view (including previous/next month days)
+  const calendarStartDate = calendarDays[0]?.date
+  const calendarEndDate = calendarDays[calendarDays.length - 1]?.date
+  
+  const calendarViewLogs = habitLogs.filter(log => {
+    if (!calendarStartDate || !calendarEndDate) return false
+    const logDate = new Date(log.completedAt)
+    return logDate >= calendarStartDate && logDate <= calendarEndDate
+  })
+  
   const currentMonthLogs = habitLogs.filter(log => {
     const logDate = new Date(log.completedAt)
     return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear
@@ -519,13 +541,11 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
         <div style={{ display: 'flex', gap: theme.spacing[1] }}>
           <NavigationButton
             onClick={() => navigateMonth('prev')}
-            disabled={currentMonth === 0 && currentYear === 2024}
           >
             <ChevronLeft size={16} />
           </NavigationButton>
           <NavigationButton
             onClick={() => navigateMonth('next')}
-            disabled={currentMonth === 11 && currentYear === 2030}
           >
             <ChevronRight size={16} />
           </NavigationButton>
@@ -533,7 +553,7 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
       </CalendarHeader>
       
       <SimpleExplanation>
-        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Weekly and monthly habits show as completed for their entire period once completed.
+        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Weekly and monthly habits show as completed for their entire period once completed. Previous/next month days have a gray background.
       </SimpleExplanation>
       
       <CalendarGrid>
@@ -643,6 +663,10 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
           <LegendItem>
             <LegendDot $color="transparent" $border={`2px solid ${theme.colors.primary[300]}`} />
             <span>Today</span>
+          </LegendItem>
+          <LegendItem>
+            <LegendDot $color={theme.colors.gray[50]} $border={`1px solid ${theme.colors.gray[100]}`} />
+            <span>Other month</span>
           </LegendItem>
         </Legend>
         
