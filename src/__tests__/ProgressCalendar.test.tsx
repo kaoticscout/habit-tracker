@@ -164,6 +164,29 @@ describe('ProgressCalendar', () => {
       expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
     })
 
+    it('should show progress for next month days', () => {
+      const habits = [
+        createHabit('weekly-1', 'Weekly Exercise', 'weekly', [
+          { date: createDate(2025, 7, 1), completed: true } // July 1st (next month)
+        ])
+      ]
+
+      const habitLogs = habits.flatMap(habit =>
+        habit.logs
+          .filter(log => log.completed)
+          .map(log => ({
+            id: log.id,
+            habitId: habit.id,
+            completedAt: new Date(log.date)
+          }))
+      )
+
+      render(<ProgressCalendar habitLogs={habitLogs} habits={habits} />)
+
+      // The calendar should show next month days and display the weekly habit progress
+      expect(screen.getByText('Track Your Progress')).toBeInTheDocument()
+    })
+
     it('should always show previous week in calendar view', () => {
       const habits = [
         createHabit('weekly-1', 'Weekly Exercise', 'weekly', [

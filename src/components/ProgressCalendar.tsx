@@ -127,7 +127,11 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean }>`
         color: ${theme.colors.text.disabled};
         background: ${theme.colors.gray[50]};
         border: 1px solid ${theme.colors.gray[100]};
-        opacity: 0.7;
+        
+        /* Apply opacity only to the day number, keep progress bars fully visible */
+        > div:first-child {
+          opacity: 0.7;
+        }
       `
     }
     
@@ -256,13 +260,13 @@ const LegendSegment = styled.div<{ $isCompleted: boolean; $frequency?: string }>
     if ($isCompleted) {
       switch ($frequency?.toLowerCase()) {
         case 'daily':
-          return theme.colors.primary[500]
+          return '#90caf9' // pastel blue - matches progress bars
         case 'weekly':
-          return theme.colors.success[500]
+          return '#a5d6a7' // pastel green - matches progress bars
         case 'monthly':
-          return theme.colors.warning[500]
+          return '#ffd59e' // pastel orange - matches progress bars
         default:
-          return theme.colors.primary[500]
+          return '#90caf9'
       }
     } else {
       return theme.colors.gray[200]
@@ -375,11 +379,15 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
     dayEnd.setHours(23, 59, 59, 999)
     
     // Get all habits that should be tracked on this date
-    const activeHabits = habits.filter(habit => {
-      // Check if habit was created before or on this date
-      const habitCreated = new Date(habit.logs[0]?.date || date)
-      return habitCreated <= dayEnd
-    })
+    // For previous/next month days, show all current habits
+    const isCurrentMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear
+    const activeHabits = isCurrentMonth 
+      ? habits.filter(habit => {
+          // For current month, only show habits created before or on this date
+          const habitCreated = new Date(habit.logs[0]?.date || date)
+          return habitCreated <= dayEnd
+        })
+      : habits // For previous/next month days, show all current habits
     
     // Separate habits by frequency
     const dailyHabits = activeHabits.filter(h => h.frequency.toLowerCase() === 'daily')
@@ -553,7 +561,7 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
       </CalendarHeader>
       
       <SimpleExplanation>
-        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Weekly and monthly habits show as completed for their entire period once completed. Previous/next month days have a gray background.
+        Each day shows separate progress rows for different habit types: daily habits (blue), weekly habits (green), and monthly habits (orange). Weekly and monthly habits show as completed for their entire period once completed. Progress is shown for all visible days, including previous/next month days (gray background).
       </SimpleExplanation>
       
       <CalendarGrid>
@@ -649,15 +657,15 @@ export default function ProgressCalendar({ habitLogs, habits, className }: Progr
             <span>Progress bar (2/3 habits)</span>
           </LegendItem>
           <LegendItem>
-            <LegendDot $color={theme.colors.primary[500]} />
+            <LegendDot $color="#90caf9" />
             <span>Daily</span>
           </LegendItem>
           <LegendItem>
-            <LegendDot $color={theme.colors.success[500]} />
+            <LegendDot $color="#a5d6a7" />
             <span>Weekly</span>
           </LegendItem>
           <LegendItem>
-            <LegendDot $color={theme.colors.warning[500]} />
+            <LegendDot $color="#ffd59e" />
             <span>Monthly</span>
           </LegendItem>
           <LegendItem>
